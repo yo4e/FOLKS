@@ -1,145 +1,236 @@
 # FOLKS — Open Questions
 
-この文書は、再開時に考える順番を失わないための一覧である。
+Last updated: 2026-08-07
 
-## The five decisions required before coding
+This document now tracks questions that remain **after** the v0 baseline design was fixed.
 
-1. 最初の住民は何人で、どれだけ差を持たせるか
-2. 日直は一回につき何を読み、何を知らないままにするか
-3. 日誌と私的記憶をどう分けるか
-4. 小世界に最低限何が存在するか
-5. 何が起きたら「社会らしい変化が発生した」と判断するか
+Questions already resolved for v0 are recorded first so that future work does not reopen them accidentally.
 
-## Residents
+For current implementation behavior, `SPEC_V0.md` is authoritative.
 
-- 初版は4人でよいか
-- 性格を明示するか、注意傾向だけを与えるか
-- 名前は最初からあるか、社会の中で付けられるか
-- 自分がAIであることを知っているか
-- 他の住民が休眠中であることを知っているか
-- 日直の順番を知っているか
-- 他者への信頼値を本人が自覚しているか
-- 住民は忘れるか。忘却はランダムか、重要度依存か
-- 新しい住民は途中参加できるか
-- 住民は消える、眠り続ける、役割を拒否することができるか
+---
 
-## Journal
+## Resolved for v0
 
-- 全員が同じ日誌を読むか
-- 直近一件だけか、複数件か
-- 過去の日誌を検索できるか
-- 日誌には署名があるか
-- 日誌の編集、訂正、追記は可能か
-- 嘘を書けるか
-- 読み間違いや欠損を意図的に発生させるか
-- 私信と公開日誌を分けるか
-- 日誌の文体が共同体の規範へ変わるか
-- 一日だけ空白の日誌を挿入したとき、空白は前任者になりうるか
+### Residents
 
-## World
+- Initial resident count: **4**
+- Names: **Kai, Fia, Tekt, Meme**
+- Rota: **Kai → Fia → Tekt → Meme → repeat**
+- Resident differentiation: **attention priors only; no strong personality/backstory**
+- Residents know they are AI: **no**
+- Residents know the world-internal duty system: **yes**
+- Residents know the experiment/observer/model infrastructure: **no**
+- Initial relationships: **all neutral**
 
-- 最小世界は広場と回覧板だけで成立するか
-- 場所は固定か、住民が命名・増築できるか
-- 資源不足や危険を入れるべきか
-- 競争がなくても社会性は立ち上がるか
-- 世界状態は数値中心か、短い自然言語中心か
-- 天候、暦、季節は必要か
-- 外界のニュースは手動投入か、自動取得か
-- ニュースは事実のまま届くか、小世界向けに変形されるか
+### Journal and memory
 
-## Rota and time
+- Shared journal visibility: **latest 4 committed entries**
+- Journal editing: **not allowed**
+- Journal correction: **only through a later new entry**
+- Journal full-history search: **not in v0**
+- Private memory: **same resident's prior private notes only**
+- Other residents' private memory: **never visible**
+- Memory summarization / embeddings / forgetting: **not in v0**
 
-- 順番は固定か、抽選か、住民が変更できるか
-- 日直を拒否できるか
-- 同じ住民が連続した場合、何が変わるか
-- オフライン中のサイクルを全再生するか、圧縮するか
-- 実時間と世界時間を一致させるか
-- 日直一回を一日と呼ぶか
-- 空白の日、欠番、時間の逆転を実験として入れるか
+### World
 
-## Memory and identity
+- Small world: **3 simple places + 3 simple objects**
+- One place begins deliberately unnamed
+- World physics: **code-controlled**
+- Model meaning/interpretation: **free in prose**
+- v0 world action: **move one existing object to one existing place**
+- New construction / object creation: **not in v0**
+- Weather: **fixed mild fixture sequence**
 
-- 個体の同一性は、名前、記憶、文体、関係のどこに宿るか
-- 記憶の要約は誰が行うか
-- 要約による歪みを欠陥ではなく現象として扱うか
-- 同じ基盤モデルから始まった住民は、何サイクルで別人らしくなるか
-- 個人の記憶を入れ替えたら、誰が誰になるか
-- 日誌だけを新しい住民へ渡した場合、共同体は継続したといえるか
-- 住民全員を交換しても日誌が続けば、同じ社会か
+### Outside drift
 
-## Autonomy
+- v0 source: **fixed 30-item fixture**
+- live news: **not in v0**
+- exactly one drift item per cycle
 
-FOLKSでいう自律性を、曖昧な印象だけで評価しないための候補。
+### Time and rota
 
-- ユーザーが指定していない話題を自発的に継続したか
-- 一人の関心が他の住民へ伝播したか
-- 前任者の問いが複数サイクル後も残ったか
-- 外界情報を内部の問題へ変換したか
-- 設定にない語彙や慣習が反復されたか
-- 住民が日直制度そのものについて解釈や批判を始めたか
-- 人間が介入しなくても、次のサイクルに意味のある未完了事項を残したか
-- 行動の多様性だけでなく、継続する偏りが生まれたか
+- v0 time: **logical cycles only**
+- total cycles: **30**
+- rota: **fixed**
+- real-time clock: **not in v0**
+- offline catch-up: **not in v0**
 
-## Observation metrics
+### Human observer
 
-定量化しすぎると作品を壊すが、最低限の比較には使える。
+- role in v0: **observer**
+- direct conversation with residents: **not in v0**
+- journal writing/intervention: **not in v0**
+- residents know they are observed: **no**
 
-- 新語の再利用回数
-- 問いの生存サイクル数
-- 住民間の語彙類似度
-- 信頼関係の変化量
-- 日誌で参照された過去の出来事
-- 同じ出来事に対する解釈の分岐数
-- 設定語ではない反復表現
-- 人間が与えた語と住民が作った語の比率
+### System architecture
 
-## Human observer
+- preserve model replaceability behind a ModelAdapter
+- preserve TurnInput snapshots and raw model outputs
+- separate system fact / public journal / private memory
+- use append-only events for historical changes
+- keep current state as a projection/convenience layer
+- commit a turn atomically
+- failed turns do not advance the cycle
+- schema + domain validation outside ModelAdapter
+- at most one repair attempt for invalid structured output
 
-- ユーザーは神、研究者、住民、読者のどれか
-- ユーザーの操作は住民に見えるか
-- 外界ニュースの投入者が人間であることを知らせるか
-- 人間が日誌へ書き込めるか
-- 観察されていると知ることで行動が変わるか
-- 「放置すること」を主要な操作として成立させられるか
+---
 
-## Aesthetic direction
+## Questions intentionally deferred until after baseline v0
 
-- にぎやかなSNS風より、静かな観察装置が合う
-- ダッシュボードより、窓、広場、日誌、灯りのような比喩が合う
-- 数字を大量に並べず、変化の痕跡を読ませる
-- かわいさだけに寄せず、不穏さを残す
-- AIキャラクター商品ではなく、継続性の実験として見せる
+These are not blockers for initial implementation.
 
-## Technical questions
+### Identity and memory
 
-- クラウドAPIで最初の実験を作るか
-- ローカルモデルを最初から使うか
-- ローカルの場合、PC性能で現実的なモデルは何か
-- 完全ブラウザ内推論を初版で狙うか
-- SQLiteで十分か
-- スケジューラーはアプリ内でよいか
-- 構造化出力の失敗をどう修復するか
-- 日誌検索に埋め込みが必要か、初版は単純な直近取得でよいか
-- ニュース取得を入れる場合、課金・利用規約・キャッシュをどう扱うか
+- When should residents begin forgetting?
+- Who/what performs long-term memory compression?
+- Should memory summarization distortion be treated as a bug, a phenomenon, or both?
+- What happens if two residents' private memories are swapped?
+- If all residents are replaced but the journal remains, is it still the same society?
+- If a new resident receives only the journal, how much communal identity survives?
 
-## Risks
+### Journal perturbation experiments
 
-- 強い人格設定を与えすぎて、変化ではなく設定再演になる
-- 毎回すべての履歴を渡し、全員が同じ知識を持ってしまう
-- 日誌が単なる要約になり、偏見や誤解が消える
-- 世界を複雑にしすぎて、ゲーム制作が主目的になる
-- モデルの文章力だけで社会らしく見えてしまう
-- 評価指標を増やしすぎて、観察の驚きを失う
-- 自動化を急ぎすぎて、何を実験しているか分からなくなる
+- What happens when one duty entry is blank?
+- What happens when a journal fragment is missing?
+- Should residents ever see different subsets of the same journal history?
+- What happens when two contradictory entries describe the same event?
+- Should an old journal be rediscovered later as an object/archive rather than searchable memory?
 
-## First restart session
+### Rota perturbation experiments
 
-次に再開した会話では、以下だけを行う。
+- What happens if duty order changes unexpectedly?
+- Can a resident refuse duty?
+- Can the same resident appear twice in a row?
+- Can a duty slot be missing?
+- Can the rota itself become a resident-interpreted institution?
 
-1. `CONTINUITY.md` を読む
-2. 4人の初期状態を一行ずつ決める
-3. `TurnInput` と `TurnOutput` の最小JSONを決める
-4. 30サイクルの観察仮説を三つ決める
-5. 初版のモデル実行方式を一つ選ぶ
+### Human intervention
 
-ここまで決めたら、最小仕様書を作り、実装へ移る。
+- Can the observer send a message into the world?
+- If so, is the message framed as a human message, an anonymous drift item, or a world event?
+- Can the observer physically move an object?
+- Do residents know a human actor exists?
+- Can the observer write directly in the shared journal?
+- Does observation itself become part of the world fiction?
+
+### World growth
+
+- Can residents create new objects?
+- Can residents mark or modify existing objects?
+- Can places receive persistent system-level names after social adoption?
+- Can residents build structures?
+- Is resource scarcity useful or does it turn FOLKS into a game?
+- Can society emerge without competition or danger?
+
+### Long-duration operation
+
+- What real-time duration corresponds to one cycle?
+- Should offline elapsed time replay every missed cycle or compress intervals?
+- What happens after hundreds or thousands of cycles?
+- How are database size and model context controlled without erasing meaningful distortion?
+- Should a long-running society be pausable/forkable as a first-class operation?
+
+### Model migration
+
+- Which local model/runtime is suitable when local migration begins?
+- Does changing the underlying model preserve resident identity?
+- Should a model migration be visible to residents as a world event?
+- Can different residents later use different model families without changing the experiment's meaning too much?
+- Is browser-only inference valuable enough to justify the constraints?
+
+---
+
+## Questions to answer during the first real v0 implementation
+
+These are implementation details that should be decided empirically without changing the experiment's conceptual character.
+
+### Prompt language
+
+- Should the baseline residents think/write in Japanese or English?
+- Does one language create materially different journal compression or naming behavior?
+
+Initial implementation may choose one language, but the choice must be stored as part of prompt/config versioning.
+
+### Text limits
+
+- Are the suggested journal/private-note limits large enough to allow nuance but small enough to prevent each turn becoming an essay?
+- Does the model naturally obey them with structured output?
+
+### Relationship change frequency
+
+- Should the model be allowed to emit several ±1 relationship changes in a single turn, or should v0 restrict the turn to one relationship target total?
+
+Current spec permits multiple targets, each with at most ±1. If real runs make relationship values noisy, tighten this in a new prompt/spec version rather than silently changing a run.
+
+### Weather visibility
+
+- Is mild weather useful as a small source of changing observation, or is it needless noise?
+
+Keep it for the baseline fixture first. Remove only in a comparison experiment.
+
+### Resident-safe action references
+
+- What is the cleanest way to give the model stable structured references to objects/places without exposing implementation IDs as world vocabulary?
+
+Current design suggests turn-local opaque refs.
+
+### Model output repair
+
+- Is one repair attempt enough for the selected model/provider?
+- Does the repair prompt materially change creative content, and should repair runs be excluded from some observations?
+
+All repairs must remain visible in Lab history.
+
+---
+
+## Observation questions
+
+These remain intentionally interpretive.
+
+### Propagation
+
+- Did a resident-created word, concern, question, or practice cross to another resident?
+- Was the transfer explicit through a journal instruction, or indirect through imitation?
+
+### Transformation
+
+- Did a shared concept change meaning over several handoffs?
+- Did a misunderstanding survive after its factual basis disappeared?
+
+### Institutionalization
+
+- Did something become a norm without being encoded as a system rule?
+- Did residents maintain it for absent/future residents?
+- Did a practice persist after the person who started it stopped mentioning it?
+
+### Identity
+
+- After 30 cycles, do Kai, Fia, Tekt, and Meme feel distinguishable for reasons not reducible to their initial attention priors?
+- Are those differences legible in private notes, public journals, relationships, or all three?
+
+### Journal agency
+
+- Do residents increasingly orient toward what the journal expects rather than toward direct world observation?
+- Does the journal begin to constrain the society more strongly than any resident does?
+
+This remains the deepest long-term FOLKS question:
+
+> Are the residents continuing the journal, or is the journal using residents to continue itself?
+
+---
+
+## Anti-drift questions for future design reviews
+
+Before adding a feature, ask:
+
+1. Does this feature make inheritance and continuity easier to observe?
+2. Does it create an entirely different source of entertainment that may hide the core experiment?
+3. Is the behavior being observed, or has it been instructed into existence?
+4. Does it leak information that residents should not have?
+5. Can the experiment still explain what changed and why?
+6. Can the feature be introduced as a controlled variable rather than a permanent complication?
+
+If the answer is unclear, prefer leaving the feature out of the baseline.
