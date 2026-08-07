@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-07
 
-This document now tracks questions that remain **after** the v0 baseline design was fixed.
+This document tracks questions that remain **after** the v0 baseline design was fixed.
 
 Questions already resolved for v0 are recorded first so that future work does not reopen them accidentally.
 
@@ -22,6 +22,12 @@ For current implementation behavior, `SPEC_V0.md` is authoritative.
 - Residents know the world-internal duty system: **yes**
 - Residents know the experiment/observer/model infrastructure: **no**
 - Initial relationships: **all neutral**
+- Relationship changes per turn: **zero or one target, delta -1/0/+1**
+
+### Language
+
+- First baseline resident-facing language: **Japanese**
+- English baseline: **later comparison experiment**
 
 ### Journal and memory
 
@@ -45,7 +51,7 @@ For current implementation behavior, `SPEC_V0.md` is authoritative.
 
 ### Outside drift
 
-- v0 source: **fixed 30-item fixture**
+- v0 source: **fixed 30-item Japanese fixture**
 - live news: **not in v0**
 - exactly one drift item per cycle
 
@@ -73,7 +79,8 @@ For current implementation behavior, `SPEC_V0.md` is authoritative.
 - keep current state as a projection/convenience layer
 - commit a turn atomically
 - failed turns do not advance the cycle
-- schema + domain validation outside ModelAdapter
+- schema + ref-resolution + domain validation outside ModelAdapter
+- give the model turn-local opaque refs instead of database IDs
 - at most one repair attempt for invalid structured output
 
 ---
@@ -145,44 +152,46 @@ These are not blockers for initial implementation.
 
 ## Questions to answer during the first real v0 implementation
 
-These are implementation details that should be decided empirically without changing the experiment's conceptual character.
+These are implementation details that may be resolved empirically without changing the experiment's conceptual character. Any choice that becomes model-visible must still be versioned.
 
-### Prompt language
+### Baseline cloud model
 
-- Should the baseline residents think/write in Japanese or English?
-- Does one language create materially different journal compression or naming behavior?
+- Which available cloud model gives sufficiently stable structured output without making each 30-cycle run unnecessarily expensive?
+- Which generation parameters should the first baseline freeze?
 
-Initial implementation may choose one language, but the choice must be stored as part of prompt/config versioning.
+Model identity and parameters belong to experiment config, not to permanent FOLKS identity.
 
 ### Text limits
 
 - Are the suggested journal/private-note limits large enough to allow nuance but small enough to prevent each turn becoming an essay?
-- Does the model naturally obey them with structured output?
-
-### Relationship change frequency
-
-- Should the model be allowed to emit several ±1 relationship changes in a single turn, or should v0 restrict the turn to one relationship target total?
-
-Current spec permits multiple targets, each with at most ±1. If real runs make relationship values noisy, tighten this in a new prompt/spec version rather than silently changing a run.
+- Does the selected model naturally obey them with structured output?
 
 ### Weather visibility
 
 - Is mild weather useful as a small source of changing observation, or is it needless noise?
 
-Keep it for the baseline fixture first. Remove only in a comparison experiment.
+Keep it for the first baseline fixture. Remove only in a comparison experiment.
 
 ### Resident-safe action references
 
-- What is the cleanest way to give the model stable structured references to objects/places without exposing implementation IDs as world vocabulary?
+- What exact turn-local ref format produces the lowest model error rate without leaking implementation vocabulary into journal prose?
 
-Current design suggests turn-local opaque refs.
+The current spec uses opaque `object:*`, `place:*`, and `resident:*` refs with a hidden TurnRefMap.
 
 ### Model output repair
 
 - Is one repair attempt enough for the selected model/provider?
-- Does the repair prompt materially change creative content, and should repair runs be excluded from some observations?
+- Does the repair prompt materially change creative content, and should repaired turns receive a Lab annotation during interpretation?
 
 All repairs must remain visible in Lab history.
+
+### Framework details
+
+- Exact migration/test setup for SQLite + Drizzle
+- Whether the first UI should use server actions, route handlers, or a small explicit application API
+- How to make turn execution idempotent against accidental duplicate requests
+
+These are engineering choices, not resident-world choices.
 
 ---
 
