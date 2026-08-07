@@ -1,12 +1,14 @@
 # CONTINUITY
 
-Last updated: 2026-08-07
+Last updated: 2026-08-08
 
 ## Current state
 
 FOLKSは構想保存段階から、**v0設計確定・実装待ち**の段階へ進んだ。
 
 2026-08-07に、既存のCONCEPT / IMPLEMENTATION / OPEN_QUESTIONSを再読し、最初の4住民・30サイクル実験について、作品設計、データ境界、実験条件、Turn入出力、resident prompt、validation、transaction、画面と操作、観察仮説まで詰めた。
+
+2026-08-08に、GitHub Copilotによる実装前レビュー Issue #1（モデル出力、repair、ref、prompt長、同時実行、再現性、UI境界、テスト）を既存設計と照合した。大半はすでに現行仕様と一致しており、作品／実験設計そのものの変更は不要と判断した。一方で、実装時に曖昧になりやすい受入条件を `docs/IMPLEMENTATION_GATES_V0.md` として追加した。特に、repair前後の監査、prompt/context budgetの実測、stale `GENERATING` 回収テスト、FOLKS/Labの構造的データ分離、export境界を明文化した。
 
 実装はまだ開始していない。
 
@@ -17,8 +19,9 @@ FOLKSは構想保存段階から、**v0設計確定・実装待ち**の段階へ
 3. `docs/EXPERIMENT_V0.md`
 4. `docs/PROMPT_V0.md`
 5. `docs/UI_V0.md`
+6. `docs/IMPLEMENTATION_GATES_V0.md`
 
-この5文書が現在の優先仕様である。
+この6文書が現在の優先仕様である。`docs/IMPLEMENTATION.md` は技術的な理由と補足を含む実装ノートとして併読する。
 
 ## Project identity
 
@@ -134,6 +137,8 @@ The shared journal is the visual/emotional center. The tiny world shows current 
 
 The human may scroll all public journal entries even though residents themselves receive only the most recent 4. Lab must make the actual resident TurnInput inspectable so this information asymmetry stays clear.
 
+FOLKS view and Lab should use separate data shapes. The ordinary FOLKS view model should not contain private notes, raw model attempts, TurnRefMap snapshots, validation internals, or other Lab-only fields. In v0 this is primarily a structural product/data boundary, not a substitute for authentication in a future multi-user deployment.
+
 ### System architecture
 
 FOLKS separates:
@@ -154,6 +159,8 @@ A turn is atomic. Model or validation failure must not partially mutate the worl
 
 Only one execution may own the next logical turn at a time; duplicate UI/network requests must not launch two resident generations for the same cycle.
 
+An abandoned `GENERATING` turn must be recoverable without inventing a commit or losing prior model-run history. The recovery path is an explicit acceptance requirement before long/baseline runs are considered reliable.
+
 ### Resident-safe references
 
 The model should not receive database identifiers such as `object_01` as world vocabulary.
@@ -168,6 +175,8 @@ The initial implementation should include a deterministic/fake adapter for syste
 
 Local and browser models remain later options.
 
+Before the first baseline, the selected cloud model must also pass disposable structured-output/repair shakeout runs and a worst-case prompt/context budget check. Character/token limits are frozen as experiment configuration before the baseline; they are not adjusted mid-run to rescue a story.
+
 ### Prompt contract
 
 `docs/PROMPT_V0.md` fixes the baseline semantics.
@@ -179,6 +188,7 @@ Important constraints:
 - outside drift does not have to be mentioned every turn
 - optional action/relationship/private note/question fields should genuinely remain optional
 - a repair call fixes structure/refs while preserving the same turn intent; it is not a second creative turn
+- original and repaired attempts remain separately inspectable; repair must not disappear behind the final valid result
 
 ## Baseline observation hypotheses
 
@@ -208,6 +218,7 @@ The following are intentionally not v0 requirements:
 - local model runtime
 - browser-only inference
 - semantic embedding-based observation metrics
+- multi-user authentication/authorization before FOLKS has a multi-user/public-hosting requirement
 
 These should be introduced as later experimental variables, not quietly folded into the baseline.
 
@@ -219,33 +230,36 @@ For implementation:
 - `docs/PROMPT_V0.md` is authoritative for baseline model-visible semantics.
 - `docs/EXPERIMENT_V0.md` is authoritative for baseline fixture content.
 - `docs/UI_V0.md` is authoritative for observer/Lab interaction semantics and anti-chat/dashboard UI constraints.
+- `docs/IMPLEMENTATION_GATES_V0.md` is authoritative for pre-baseline reliability gates added after Issue #1 review.
 
 Recommended implementation order inside one coherent implementation branch/PR:
 
 1. domain types and Japanese fixtures
 2. FakeModel 30-cycle runner
 3. turn-local ref mapping
-4. turn claim / duplicate-execution safety
-5. validation and atomic turn semantics
+4. turn claim / duplicate-execution safety and stale-generation recovery
+5. validation, repair auditing, and atomic turn semantics
 6. persistence/event projections
 7. Lab view
-8. FOLKS view
+8. FOLKS view with structurally safe/public data shape
 9. one real cloud model adapter
-10. technical shakeout runs
-11. freeze prompt/model config and perform the first full 30-cycle baseline
+10. technical shakeout runs + worst-case prompt/context budget measurement
+11. freeze prompt/model/size-limit config and perform the first full 30-cycle baseline
 
 Do not begin by building a rich world, live scheduler, or polished game UI.
 
 ## Instruction to the next Monday / Codex
 
-- Read `docs/DESIGN.md`, `docs/SPEC_V0.md`, `docs/EXPERIMENT_V0.md`, `docs/PROMPT_V0.md`, and `docs/UI_V0.md` before coding.
+- Read `docs/DESIGN.md`, `docs/SPEC_V0.md`, `docs/EXPERIMENT_V0.md`, `docs/PROMPT_V0.md`, `docs/UI_V0.md`, and `docs/IMPLEMENTATION_GATES_V0.md` before coding.
 - Treat the v0 baseline as an experiment whose conditions must remain inspectable and reproducible.
 - Preserve information boundaries: private notes must never leak across residents.
 - Preserve the distinction between system fact and journal interpretation.
 - Do not add features merely because an agent framework makes them easy.
 - Do not prompt the model to manufacture the behaviors the experiment is supposed to observe.
 - Prefer a small, auditable engine over a feature-rich agent demo.
-- Keep failed/repair model attempts visible in Lab history.
+- Keep failed/repair model attempts visible in Lab history, including enough information to compare original and repaired output.
+- Measure prompt/context budget with the selected model before freezing the baseline.
+- Treat duplicate claims and stale `GENERATING` recovery as tested state-machine behavior, not UI edge cases.
 - Do not erase an old run merely because the observer wants to restart from cycle 1.
 
 FOLKS is no longer dormant. The next step is implementation, not another concept restart.
