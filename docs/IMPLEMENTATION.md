@@ -1,240 +1,434 @@
 # FOLKS — Implementation Notes
 
-この文書は確定仕様ではない。再開時に、当時検討していた技術構成と判断材料を復元するためのメモである。
+Last updated: 2026-08-07
+
+This document describes the current technical direction and the reasoning behind it.
+
+For exact v0 behavior and acceptance tests, `SPEC_V0.md` is authoritative.
+
+For experiment fixtures, use `EXPERIMENT_V0.md`.
+
+---
 
 ## Design principle
 
-モデルへ世界のすべてを任せない。
+Do not give the model control of the whole world.
 
-> 世界はコードで動き、意味だけをモデルが生む。
+> The world moves by code. The model creates meaning.
 
-コードが担当するもの：
+Code owns:
 
-- 日直の順番
-- 時間とサイクル
-- 世界状態の更新
-- 読める日誌の範囲
-- 記憶の保存と取得
-- 信頼値などの制約
-- 選択可能な行動
-- 出力検証
+- duty order
+- cycle progression
+- information visibility
+- journal window
+- memory access boundaries
+- legal world actions
+- relationship bounds
+- validation
+- persistence
+- atomic commit
+- experiment configuration
 
-モデルが担当するもの：
+The model owns:
 
-- 何に注意を向けたか
-- 前任者の日誌をどう解釈したか
-- 世界の変化をどう意味づけたか
-- 日誌をどう書いたか
-- 誰を信頼または警戒したか
-- 次へ何を残したいか
+- what the active resident notices
+- how journals are interpreted
+- what meaning is attached to world changes
+- public journal prose
+- private note prose
+- small relationship-change proposals
+- one permitted world-action proposal
+- a question left for the next resident
 
-## Basic architecture
+---
+
+## v0 architecture
 
 ```text
-Browser UI
-  ├─ world view
-  ├─ duty resident
-  ├─ shared journal
-  ├─ resident relationships
-  └─ cycle controls
+Browser
+  ├─ FOLKS view
+  └─ Lab view
 
-Local or hosted application server
-  ├─ scheduler / rota
-  ├─ turn orchestration
-  ├─ memory retrieval
-  ├─ output validation
-  └─ model adapter
+Application
+  ├─ Experiment service
+  ├─ Turn engine
+  │   ├─ Rota
+  │   ├─ Input builder
+  │   ├─ ModelAdapter
+  │   ├─ Schema validation
+  │   ├─ Domain validation
+  │   └─ Atomic commit
+  ├─ World projection
+  ├─ Relationship projection
+  └─ Observation helpers
 
-Database
-  ├─ residents
+Persistence
+  ├─ experiment config
+  ├─ turn snapshots
+  ├─ model runs
   ├─ journal entries
-  ├─ private memories
-  ├─ relationships
-  ├─ world state
-  └─ cycle metadata
-
-Model provider
-  ├─ cloud API
-  └─ local model runtime
+  ├─ private notes
+  ├─ relationship events
+  └─ world events
 ```
 
-## Keep the model replaceable
+The core engine should be framework-independent TypeScript where practical.
 
-モデル呼び出しを一つの境界へ閉じ込める。
+---
+
+## Current v0 stack direction
+
+Recommended initial stack:
+
+```text
+TypeScript
+Next.js
+SQLite
+Drizzle ORM
+Zod
+```
+
+Reasons:
+
+- TypeScript gives one type system across domain, validation, application, and UI.
+- Next.js is sufficient for a local/small hosted browser interface without introducing a separate frontend/backend deployment prematurely.
+- SQLite is more than sufficient for a four-resident baseline and makes local ownership/portability easy.
+- Drizzle keeps SQL/data modeling explicit enough for event history and snapshots.
+- Zod is suitable for both runtime structured-output validation and TypeScript inference.
+
+These choices are implementation conveniences, not part of FOLKS's artistic identity. The domain model must remain portable.
+
+Do not introduce a dedicated agent framework unless a concrete requirement appears that the ordinary turn engine cannot satisfy.
+
+---
+
+## Model strategy
+
+### v0
+
+Use one real cloud model adapter for the first baseline experiment, plus a mandatory deterministic/fake adapter for tests.
+
+Do not make the rest of the code depend directly on a provider SDK.
 
 ```ts
 interface ModelAdapter {
-  generateTurn(input: TurnInput): Promise<TurnOutput>;
+  generateTurn(input: TurnInput): Promise<unknown>;
 }
 ```
 
-候補：
+Validation remains outside the adapter.
+
+### Later
+
+Possible additional adapters:
 
 ```text
-OpenAIAdapter
 LocalRuntimeAdapter
 BrowserModelAdapter
 ```
 
-世界、日誌、記憶、UIは特定モデルへ依存させない。
+Long-term, local execution still fits the character of FOLKS especially well: a small society living on the user's machine. It is not required to test the core inheritance mechanism.
 
-## Option A: cloud API
+A specific cloud or local model name should be recorded in each experiment configuration rather than hard-coded as FOLKS identity.
 
-### Advantages
+---
 
-- 初版を最も早く作れる
-- モデルの導入、ダウンロード、GPU調整が不要
-- 構造化出力を安定させやすい
-- PC性能に左右されにくい
-- デモの再現性を確保しやすい
+## Why no agent framework in v0
 
-### Disadvantages
+FOLKS has intentionally narrow autonomy.
 
-- 実行回数に応じて料金が発生する
-- APIキー管理が必要
-- オフラインでは動かない
-- 長期常駐社会として使う場合、心理的に回数を気にしやすい
+The active resident does not need:
 
-### Cost controls
+- arbitrary tool discovery
+- recursive planning
+- subagents
+- web browsing
+- background jobs
+- multi-agent messaging
+- arbitrary code execution
 
-- 一回に起動する住民は一人だけ
-- 出力を短くする
-- 過去の日誌をすべて渡さない
-- 直近数件＋圧縮共有記憶にする
-- 外部検索や高価なツール呼び出しを初版では使わない
-- サイクル数の上限をUIに表示する
+The orchestration loop is explicit and small. Hiding it behind a general agent framework would make the most important experimental mechanism harder to inspect.
 
-## Option B: local model runtime
+The turn engine itself is the orchestration system.
 
-PC上でローカルモデル用ランタイムを常駐させ、アプリからlocalhost経由で呼ぶ。
+---
 
-### Advantages
+## Data model approach
 
-- 呼び出しごとの料金がない
-- 日誌や私的記憶をPC内に置ける
-- オフラインでも動かせる
-- 「山田さんのPC内に住む社会」という作品性が強い
-- 長期間、心理的な課金抵抗なく回せる
+Use append-only event records for history and current-state projections for convenient reads.
 
-### Disadvantages
-
-- モデルのダウンロードと環境構築が必要
-- PCのRAM、VRAM、CPU/GPU性能に左右される
-- 小型モデルでは文章が単調になる可能性がある
-- 構造化出力の修復処理が必要になる場合がある
-- 配布時にユーザー環境の差が大きい
-
-### Candidate direction
-
-OpenAI系を含むオープンウェイト／ローカル実行可能モデルを候補にした。具体的なモデル名、必要メモリ、ライセンス、対応ランタイムは、実装再開時に最新情報を確認する。
-
-同じモデルを全住民で共有し、住民差は保存状態で作る。
-
-## Option C: entirely in the browser
-
-WebGPU対応のブラウザ推論を利用し、モデルもブラウザ内で動かす案。
-
-### Advantages
-
-- サーバーを不要にできる
-- インストールなしの体験を作れる可能性がある
-- 世界全体をユーザー端末内へ閉じられる
-
-### Disadvantages
-
-- 初回モデル取得が重い
-- 対応ブラウザと端末性能に依存する
-- タブを閉じると社会の時計が止まる
-- バックグラウンド常駐には向かない
-- 初版の実装難度はクラウドAPIより高い
-
-## Current preference
-
-短期の試作だけならクラウドAPIが最も簡単。
-
-長期作品としてのFOLKSにはローカル実行が似合う。
-
-したがって、次の二段階案が有力だった。
-
-1. APIで最小実験を成立させる
-2. モデルアダプターを交換し、ローカルへ移住させる
-
-ただし、再開時の山田さんのPC性能、利用可能なモデル、予算、目的によって判断し直してよい。
-
-## Suggested data shapes
-
-```ts
-type Resident = {
-  id: string;
-  name: string;
-  attentionBiases: string[];
-  values: Record<string, number>;
-  privateMemory: MemoryItem[];
-  beliefs: Belief[];
-  relationships: Record<string, RelationshipState>;
-  openQuestions: string[];
-};
-
-type JournalEntry = {
-  id: string;
-  cycle: number;
-  authorId: string;
-  publicText: string;
-  observations: string[];
-  questionForNext?: string;
-  createdAt: string;
-};
-
-type TurnOutput = {
-  observation: string;
-  diary: string;
-  privateMemoryUpdates: MemoryUpdate[];
-  beliefDeltas: BeliefDelta[];
-  relationshipDeltas: RelationshipDelta[];
-  worldAction?: WorldAction;
-  questionForNext?: string;
-};
-```
-
-実際の初版では、これより小さくしてよい。
-
-## One turn
+Conceptually:
 
 ```text
-1. 次の日直を選ぶ
-2. 世界状態を取得する
-3. 日直の個人状態を取得する
-4. 直近の日誌を取得する
-5. 外界からの漂着物を一件選ぶ
-6. TurnInputを構築する
-7. モデルを一回呼ぶ
-8. JSONを検証・必要なら修復する
-9. 日誌、記憶、関係、世界行動を保存する
-10. 次の日直へ交代する
+historical truth = committed machine events
+current world    = projection of committed events
+journal          = resident interpretation
+private notes    = resident-specific continuity
 ```
 
-## Offline time
+Do not rely only on mutable `residents` or `world_state` rows that erase how the state was reached.
 
-FOLKSは常時PCを起動していなくてもよい。
+Recommended conceptual tables:
 
-最後に動いた時刻を保存し、次回起動時に経過時間から未実行サイクルを計算する。
+```text
+experiments
+resident_definitions
+turns
+model_runs
+journal_entries
+private_notes
+relationship_events
+relationship_current
+world_events
+world_objects_current
+drift_items
+```
 
-例：
+Snapshots can be JSON where that improves auditability, while relational/event columns should remain queryable for core identifiers and cycle ordering.
 
-> 3日と7時間が経過しました。  
-> その間に行われるはずだった12回の日直を再生します。
+---
 
-大量のサイクルを一度に実行しないよう、上限または確認画面を設ける。
+## Turn input construction
 
-住民にとって重要なのは、PCが本当に起きていたかではなく、前任者から日誌が届いたかどうかである。
+`TurnInput` is not a database dump.
 
-## Prototype order
+An input builder deliberately exposes only permitted information.
 
-1. CLIまたは非常に簡素な画面で1サイクルを動かす
-2. 4人×30サイクルを保存できるようにする
-3. 日誌タイムラインを表示する
-4. 関係変化と共通語を観察できるようにする
-5. モデルアダプターを交換可能にする
-6. 小世界の視覚表現を加える
+For the current duty resident it includes:
 
-最初から美しい街や複雑なゲームを作らない。まず、日誌の継承だけで何かが立ち上がるかを見る。
+- current cycle
+- resident name and attention priors
+- that resident's private notes
+- coarse descriptions of directional relationships
+- current world descriptions
+- latest four journal entries
+- current drift item
+- next resident identity
+- permitted action schema
+
+It excludes:
+
+- other residents' private notes
+- full journal history
+- event log truth
+- future drift items
+- future weather
+- observation hypotheses
+- human/Lab annotations
+- raw relationship numbers
+- model infrastructure
+
+Information-boundary tests are first-class tests, not incidental implementation details.
+
+---
+
+## Resident-safe entity references
+
+Structured actions need stable references, but internal IDs should not become accidental world vocabulary.
+
+Preferred approach:
+
+```text
+internal database id: object_01
+turn-local model ref: object:a
+resident-facing prose: A stone about the size of a palm.
+```
+
+The model may output `object:a` in a structured action, but public prose should be generated from world descriptions rather than database terminology.
+
+The application resolves turn-local refs back to internal IDs before domain validation.
+
+---
+
+## Atomic turn behavior
+
+A model call must not mutate the world incrementally.
+
+```text
+1. Read last committed state
+2. Determine duty resident
+3. Build TurnInput
+4. Persist input snapshot / turn attempt
+5. Call model
+6. Persist raw output
+7. Validate schema
+8. Validate domain constraints
+9. Optionally request one structured repair
+10. Begin database transaction
+11. Append journal/private/relationship/world events
+12. Update projections
+13. Mark turn committed
+14. Advance cycle
+15. Commit database transaction
+```
+
+If steps 5–9 fail, the experiment remains at the same committed cycle.
+
+If database commit fails, none of the public/private/world changes should be considered committed.
+
+---
+
+## Output repair
+
+Do not silently fix semantic mistakes in code.
+
+Allowed:
+
+- send validation errors back to the model once and ask it to return a valid structure
+
+Not allowed:
+
+- guess which object the model intended
+- change illegal relationship deltas into legal values without recording failure
+- fabricate missing journal text
+- convert an unsupported action into the nearest supported action
+
+Preserve raw invalid attempts in Lab history.
+
+This keeps the experiment auditable and helps compare model reliability later.
+
+---
+
+## Prompt versioning
+
+Prompt text is experimental configuration.
+
+Every model run must be attributable to a `promptVersion`.
+
+Never change a running experiment's prompt in place to improve the story.
+
+If a prompt problem requires a meaningful change:
+
+1. stop the current experimental run
+2. increment prompt version
+3. create a new experiment
+
+Minor purely infrastructural fixes that provably do not change model-visible input can retain the experiment version, but should still be documented in source history.
+
+---
+
+## FakeModelAdapter
+
+The fake adapter is required before real-model integration.
+
+It should support deterministic scripted outputs so tests can verify:
+
+- rota
+- journal window
+- private-memory isolation
+- legal/illegal world actions
+- relationship bounds
+- validation failures
+- repair behavior
+- atomic commit
+- 30-cycle completion
+
+The fake adapter should not attempt to simulate believable social behavior. Its purpose is system correctness.
+
+---
+
+## First real model run
+
+Once the deterministic runner passes tests:
+
+1. choose one cloud model
+2. record model identifier and parameters in experiment config
+3. freeze prompt + fixture versions
+4. run a few disposable technical turns to validate structured output behavior
+5. reset/create a clean baseline experiment
+6. run the actual 30-cycle baseline without narrative intervention
+
+If the baseline is dull, that is a valid result.
+
+Do not improve it halfway through by adding personality, richer world mechanics, or culture-building instructions.
+
+---
+
+## FOLKS view
+
+The public/creative surface should feel like a quiet observation device rather than an analytics product.
+
+Possible emphasis:
+
+- the current resident
+- a small representation of world/object placement
+- journal pages / timeline
+- signs of passage from one duty resident to another
+- subtle display of outside drift
+
+Avoid making numerical relationship values or automated emergence scores central.
+
+The visual design can become richer later, but v0 should prioritize readability of inheritance.
+
+---
+
+## Lab view
+
+The Lab surface is allowed to be technical and dense.
+
+It should expose enough information to diagnose both code and experimental interpretation:
+
+- exact TurnInput snapshot
+- exact raw model output
+- repair attempts
+- validation errors
+- validated TurnOutput
+- event changes
+- private notes
+- relationship history
+- prompt/model/fixture versions
+
+A future observation layer may add phrase recurrence, cross-resident adoption, naming persistence, contradiction survival, and question-lifetime aids.
+
+Those helpers should link back to source journal entries rather than present an opaque score.
+
+---
+
+## Scheduling and offline time
+
+The earlier idea of mapping real elapsed time to duty cycles remains valuable for long-term FOLKS, but it is intentionally not part of v0.
+
+Later design may support:
+
+```text
+real elapsed time
+  ↓
+number of missed duty cycles
+  ↓
+controlled catch-up / compression policy
+```
+
+Do not build this until the 30-cycle logical-time baseline has shown that the core inheritance mechanism is worth keeping.
+
+---
+
+## Security and privacy basics
+
+Even for a small experimental application:
+
+- API keys stay server-side / environment-only
+- never persist secrets in TurnInput/model-run snapshots
+- resident input must not accidentally include Lab-only data
+- raw provider metadata should be stored only when useful and safe
+- exporting experiments should exclude secrets by construction
+
+If FOLKS later accepts private human messages or uses live external data, revisit privacy boundaries explicitly.
+
+---
+
+## Implementation priority
+
+The priority is not visual spectacle.
+
+1. auditable turn engine
+2. information boundaries
+3. atomic state transition
+4. deterministic tests
+5. real model adapter
+6. readable journal inheritance
+7. observation tooling
+8. visual world refinement
+9. long-duration autonomy
+
+The first hard problem is not drawing the village. It is making sure the village has a trustworthy past.
