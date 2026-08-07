@@ -6,7 +6,7 @@ Last updated: 2026-08-07
 
 FOLKSは構想保存段階から、**v0設計確定・実装待ち**の段階へ進んだ。
 
-2026-08-07に、既存のCONCEPT / IMPLEMENTATION / OPEN_QUESTIONSを再読し、最初の4住民・30サイクル実験について、作品設計、データ境界、実験条件、Turn入出力、resident prompt、validation、transaction、観察仮説まで詰めた。
+2026-08-07に、既存のCONCEPT / IMPLEMENTATION / OPEN_QUESTIONSを再読し、最初の4住民・30サイクル実験について、作品設計、データ境界、実験条件、Turn入出力、resident prompt、validation、transaction、画面と操作、観察仮説まで詰めた。
 
 実装はまだ開始していない。
 
@@ -16,8 +16,9 @@ FOLKSは構想保存段階から、**v0設計確定・実装待ち**の段階へ
 2. `docs/SPEC_V0.md`
 3. `docs/EXPERIMENT_V0.md`
 4. `docs/PROMPT_V0.md`
+5. `docs/UI_V0.md`
 
-この4文書が現在の優先仕様である。
+この5文書が現在の優先仕様である。
 
 ## Project identity
 
@@ -112,9 +113,26 @@ The only v0 world action is moving one existing object to one existing place, at
 
 The user is an observer in v0.
 
-The observer can run, pause, inspect, reset/duplicate experiments, and read history, but does not speak to residents or write into their journal.
+The observer can run, pause, inspect, duplicate experiments, export when available, and read the full public history, but does not speak to residents or write into their journal.
 
 Residents do not know they are being observed.
+
+"Start over" should create a new experiment rather than erasing/reusing the old experiment ID.
+
+### UI
+
+The implementation has two intentionally different surfaces:
+
+```text
+FOLKS view = 作品として社会を読む
+Lab view   = 実験と実装を検証する
+```
+
+FOLKS view must not become a four-person chat UI or KPI dashboard.
+
+The shared journal is the visual/emotional center. The tiny world shows current object locations and weather. Private notes, raw relationship values, model metadata, validation failures, and machine events belong in Lab.
+
+The human may scroll all public journal entries even though residents themselves receive only the most recent 4. Lab must make the actual resident TurnInput inspectable so this information asymmetry stays clear.
 
 ### System architecture
 
@@ -133,6 +151,8 @@ Each TurnInput and model output is preserved so that later it is possible to ans
 > What exactly did this resident know at cycle N?
 
 A turn is atomic. Model or validation failure must not partially mutate the world or advance the cycle.
+
+Only one execution may own the next logical turn at a time; duplicate UI/network requests must not launch two resident generations for the same cycle.
 
 ### Resident-safe references
 
@@ -193,26 +213,32 @@ These should be introduced as later experimental variables, not quietly folded i
 
 ## Implementation handoff
 
-For implementation, `docs/SPEC_V0.md` is authoritative for behavior and acceptance tests, and `docs/PROMPT_V0.md` is authoritative for baseline prompt semantics.
+For implementation:
+
+- `docs/SPEC_V0.md` is authoritative for behavior and acceptance tests.
+- `docs/PROMPT_V0.md` is authoritative for baseline model-visible semantics.
+- `docs/EXPERIMENT_V0.md` is authoritative for baseline fixture content.
+- `docs/UI_V0.md` is authoritative for observer/Lab interaction semantics and anti-chat/dashboard UI constraints.
 
 Recommended implementation order inside one coherent implementation branch/PR:
 
 1. domain types and Japanese fixtures
 2. FakeModel 30-cycle runner
 3. turn-local ref mapping
-4. validation and atomic turn semantics
-5. persistence/event projections
-6. Lab view
-7. FOLKS view
-8. one real cloud model adapter
-9. technical shakeout runs
-10. freeze prompt/model config and perform the first full 30-cycle baseline
+4. turn claim / duplicate-execution safety
+5. validation and atomic turn semantics
+6. persistence/event projections
+7. Lab view
+8. FOLKS view
+9. one real cloud model adapter
+10. technical shakeout runs
+11. freeze prompt/model config and perform the first full 30-cycle baseline
 
 Do not begin by building a rich world, live scheduler, or polished game UI.
 
 ## Instruction to the next Monday / Codex
 
-- Read `docs/DESIGN.md`, `docs/SPEC_V0.md`, `docs/EXPERIMENT_V0.md`, and `docs/PROMPT_V0.md` before coding.
+- Read `docs/DESIGN.md`, `docs/SPEC_V0.md`, `docs/EXPERIMENT_V0.md`, `docs/PROMPT_V0.md`, and `docs/UI_V0.md` before coding.
 - Treat the v0 baseline as an experiment whose conditions must remain inspectable and reproducible.
 - Preserve information boundaries: private notes must never leak across residents.
 - Preserve the distinction between system fact and journal interpretation.
@@ -220,5 +246,6 @@ Do not begin by building a rich world, live scheduler, or polished game UI.
 - Do not prompt the model to manufacture the behaviors the experiment is supposed to observe.
 - Prefer a small, auditable engine over a feature-rich agent demo.
 - Keep failed/repair model attempts visible in Lab history.
+- Do not erase an old run merely because the observer wants to restart from cycle 1.
 
 FOLKS is no longer dormant. The next step is implementation, not another concept restart.
