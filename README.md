@@ -36,10 +36,10 @@ FOLKSが扱いたい自律性は、巨大な単独エージェントの万能さ
 - private self-memory only
 - at most one small relationship change per turn
 - tiny world with 3 places and 3 objects
-- one fixed outside drift item per cycle
+- one neutral fixed outside drift item per cycle
 - no live news, real-time scheduling, or human conversation in the baseline
 
-住民は、自分たちがAIや実験対象であることを知りません。
+住民は、自分たちがAIや実験対象であることを知りません。また、observer側のbaselineが30サイクルで終了することも住民には知らせません。
 
 初期人格を作り込みすぎず、4人には異なる「注意の向きやすさ」だけを与えます。社会らしいものを作るようモデルへ命令せず、継承の結果として何が残るかを観察します。
 
@@ -57,26 +57,32 @@ private memory  = resident-specific continuity
 
 ## Current status
 
-**v0 design complete; implementation not started.**
+**v0 design finalized; implementation ready, implementation not started.**
 
-2026-08-08のpre-implementation review（Issue #1）も設計へ反映済みです。作品／実験条件は変更せず、structured output、repair監査、prompt/context budget、duplicate claim / stale generation recovery、FOLKS/Labデータ境界、export境界を実装前ゲートとして明文化しました。
+2026-08-08の最終全体レビューで、作品の核は維持したまま、baselineを汚しうる点を `docs/FINALIZATION_V0.md` に修正しました。主な修正は、漂着物のテーマ誘導を弱めたneutral fixture、resident-visible inputから実験ID／30-cycle horizonを除外、baselineの再生成selection bias防止、experiment stateの明確化、日誌の最低文字数強制の撤廃です。
 
-次に実装へ入る場合は、まず `CONTINUITY.md` と以下の文書を読んでください。
+GitHub Copilotによるpre-implementation review（Issue #1）も設計へ反映済みで、structured output、repair監査、prompt/context budget、duplicate claim / stale generation recovery、FOLKS/Labデータ境界、export境界を実装前ゲートとして明文化しています。
 
-1. [`docs/DESIGN.md`](./docs/DESIGN.md) — 作品設計、情報境界、世界と観察者
-2. [`docs/SPEC_V0.md`](./docs/SPEC_V0.md) — 実装仕様、型、validation、transaction、テスト
-3. [`docs/EXPERIMENT_V0.md`](./docs/EXPERIMENT_V0.md) — 初期状態、30件の漂着物、観察仮説
-4. [`docs/PROMPT_V0.md`](./docs/PROMPT_V0.md) — baseline resident promptとrepair契約
-5. [`docs/UI_V0.md`](./docs/UI_V0.md) — FOLKS view / Lab view / 操作意味
-6. [`docs/IMPLEMENTATION_GATES_V0.md`](./docs/IMPLEMENTATION_GATES_V0.md) — baseline前に通す信頼性・監査ゲート
+次に実装へ入る場合は、以下の順で読んでください。
+
+1. [`docs/FINALIZATION_V0.md`](./docs/FINALIZATION_V0.md) — **最終修正。競合時はこの文書を優先**
+2. [`docs/DESIGN.md`](./docs/DESIGN.md) — 作品設計、情報境界、世界と観察者
+3. [`docs/SPEC_V0.md`](./docs/SPEC_V0.md) — 実装仕様、型、validation、transaction、テスト
+4. [`docs/EXPERIMENT_V0.md`](./docs/EXPERIMENT_V0.md) — 初期状態、実験仮説、weather。元のdrift列はresonant comparison扱い
+5. [`docs/PROMPT_V0.md`](./docs/PROMPT_V0.md) — baseline resident promptとrepair契約
+6. [`docs/UI_V0.md`](./docs/UI_V0.md) — FOLKS view / Lab view / 操作意味
+7. [`docs/IMPLEMENTATION_GATES_V0.md`](./docs/IMPLEMENTATION_GATES_V0.md) — baseline前に通す信頼性・監査ゲート
+8. [`docs/IMPLEMENTATION.md`](./docs/IMPLEMENTATION.md) — 技術構成と実装方針
+9. [`CONTINUITY.md`](./CONTINUITY.md) — 現在地とhandoff context
 
 ## Documents
 
+- [`docs/FINALIZATION_V0.md`](./docs/FINALIZATION_V0.md) — final pre-implementation corrections / supersessions
 - [`CONTINUITY.md`](./CONTINUITY.md) — 現在地、確定事項、次の入口
 - [`docs/CONCEPT.md`](./docs/CONCEPT.md) — 作品思想と原型
 - [`docs/DESIGN.md`](./docs/DESIGN.md) — 現在の設計原則
 - [`docs/SPEC_V0.md`](./docs/SPEC_V0.md) — v0の実装仕様
-- [`docs/EXPERIMENT_V0.md`](./docs/EXPERIMENT_V0.md) — baseline experiment fixture
+- [`docs/EXPERIMENT_V0.md`](./docs/EXPERIMENT_V0.md) — experiment rationale / weather / hypotheses / resonant drift comparison data
 - [`docs/PROMPT_V0.md`](./docs/PROMPT_V0.md) — resident-facing prompt contract
 - [`docs/UI_V0.md`](./docs/UI_V0.md) — 観察画面とLab画面の設計
 - [`docs/IMPLEMENTATION_GATES_V0.md`](./docs/IMPLEMENTATION_GATES_V0.md) — pre-baseline reliability / audit gates
@@ -88,5 +94,7 @@ private memory  = resident-specific continuity
 同じ初期条件から4住民×30サイクルを安全に実行でき、各日直がその時点で許された情報だけを読み、公開日誌・私的記憶・小さな関係変化・最大一つの世界行動を残せること。
 
 すべての入力、モデル出力、validation、世界変化を追跡可能にし、作品として読むFOLKS viewと検証するLab viewの両方から履歴を観察できること。
+
+実装は専用ブランチで行い、PRでレビューします。最初のbaselineは、FakeModel/tests、実model shakeout、context budget、claim/recovery等のimplementation gatesを通過してから開始します。
 
 そこまで完成して初めて、「継承だけで何かが立ち上がるか」を実際に問います。
