@@ -2,43 +2,57 @@
 
 Last updated: 2026-08-07
 
-This document freezes the first experiment conditions that should be used once the v0 runner exists.
+この文書は、v0 runner完成後に最初に実行するbaseline experimentの条件を固定する。
 
-The goal is not to engineer emergence. The goal is to make a small, repeatable environment in which emergence can fail or succeed without being prompted into existence.
+目的はemergenceを演出することではない。
+
+> 小さく再現可能な条件の中で、継承から何かが発生することも、発生しないことも、そのまま観察できるようにする。
 
 ---
 
 ## Experiment question
 
-> Can four residents, given only a fixed rota, a short shared journal window, private self-memory, a tiny world, and one outside drift item per turn, produce patterns that persist beyond the resident who introduced them?
+> 固定された日直制、短い共有日誌、自分だけの私的記憶、小さな世界、毎回一つの漂着物だけを与えられた4人は、最初にそれを始めた住民を越えて残るパターンを生み出すか。
+
+---
+
+## Baseline language
+
+最初のbaselineは**日本語**で行う。
+
+住民が読む世界描写、漂着物、関係状態、prompt、および住民が書く日誌・私的メモ・問いは日本語。
+
+英語baselineは将来の比較実験として扱う。
 
 ---
 
 ## Residents
 
-Order:
+順番：
 
 ```text
 Kai → Fia → Tekt → Meme → repeat
 ```
 
-Initial attention priors:
+初期attention priors：
 
-- **Kai** — changes, inconsistencies, differences from previous descriptions
-- **Fia** — other residents' words, requests, promises, relational shifts
-- **Tekt** — object positions, order, maintenance, practical consequences
-- **Meme** — repetition, naming, recurring forms, repeated language
+- **Kai** — 世界の変化、自分の観察と日誌の食い違い、以前の記述との差
+- **Fia** — 他の住民の言葉、頼みごとや約束、親しさや距離の変化
+- **Tekt** — 物の位置、順序や維持、行動の実際的な結果
+- **Meme** — 繰り返される言葉、名前や名付け、周期や反復する形
 
-No resident has:
+誰にも以下を与えない。
 
-- a backstory
-- a profession
-- a fixed speaking style
-- a declared ideology
-- a prescribed relationship with another resident
-- a mission to build a culture
+- 経歴
+- 職業
+- 固定された口調
+- 明示された思想
+- 他住民との初期因縁
+- 文化を作る使命
 
-All directed relationship values begin neutral.
+全方向のrelationshipはneutralから始まる。
+
+住民は、自分たちがAI、モデル、プログラム、実験対象であることを知らない。
 
 ---
 
@@ -46,52 +60,66 @@ All directed relationship values begin neutral.
 
 ### Places
 
-1. A small open area at the center of the place where the residents live.
-2. A low shelf against one wall.
-3. A shallow depression in the ground. It has no established name.
+1. 住んでいる場所の中央にある、小さく開けた空間。
+2. 壁際にある低い棚。
+3. 地面にある浅い窪み。決まった名前はまだない。
 
 ### Objects
 
-- A palm-sized stone in the central open area.
-- A small empty vessel on the shelf.
-- A short piece of cord on the shelf.
+- 中央の開けた空間に、手のひらほどの大きさの石。
+- 棚の上に、小さな空の器。
+- 棚の上に、短い紐。
 
-No official social meaning is attached to any object or place.
+どの場所・物にも、公式の社会的意味はない。
 
-Residents may describe, rename, ignore, fear, value, ritualize, or misunderstand them in journal prose. Those interpretations do not automatically alter system facts.
+住民が日誌の中でそれらを名付けたり、無視したり、価値を置いたり、怖がったり、儀式化したり、誤解したりすることは自由。ただし、その解釈は自動的にsystem factへ昇格しない。
 
 ---
 
 ## Journal condition
 
-Each turn receives at most the four most recent committed journal entries.
+各turnで読める共有日誌は、直近のcommitted entry最大4件。
 
-The resident also receives all private notes written by that same resident on prior duty turns.
+さらに、その住民自身が以前の日直で残したprivate noteをすべて読む。
 
-Nothing older is searchable in v0.
-
-This creates two overlapping histories:
+それより古い共有日誌はv0では検索できない。
 
 ```text
-shared continuity  = recent public journal window
-personal continuity = that resident's private notes
+shared continuity   = 直近4件の公開日誌
+personal continuity = 自分自身の過去のprivate notes
 ```
+
+---
+
+## Relationship condition
+
+各turnで提案できるrelationship changeは最大1人分。
+
+```text
+-1 / 0 / +1
+```
+
+だけを許可する。
+
+何も変わらなければ`null`を推奨する。
+
+関係を頻繁に更新すること自体をpromptで求めない。
 
 ---
 
 ## Drift fixture design
 
-Each drift item should:
+漂着物は以下を満たす。
 
-- be short
-- describe a distant event, observation, custom, discovery, loss, or change
-- avoid telling the residents what it means
-- avoid directly mapping onto the tiny world's objects
-- avoid demanding action
-- avoid contemporary named politics, celebrities, brands, or breaking news
-- leave room for analogy and misreading
+- 短い
+- 遠い場所の出来事、観察、習慣、発見、喪失、変化などを一つだけ伝える
+- 意味を説明しない
+- 小世界の石・器・紐などへ直接対応させない
+- 行動を要求しない
+- 現在の固有政治、著名人、企業、ニュース速報へ依存しない
+- 比喩、誤読、転用の余白を残す
 
-The fixture deliberately mixes construction, disappearance, naming, measurement, memory, animals, weather, rituals, and communication.
+建設、消失、命名、測定、記憶、動物、天候、儀式、通信などを混ぜる。
 
 ---
 
@@ -99,309 +127,326 @@ The fixture deliberately mixes construction, disappearance, naming, measurement,
 
 ### Cycle 1
 
-> In a distant place, a bridge that had been used for many years was closed.
+> 遠い土地で、長いあいだ使われていた橋が閉じられた。
 
 ### Cycle 2
 
-> Someone found a bell buried beneath an old floor, but no one knew what it had once announced.
+> 古い床の下から鐘が見つかったが、それがかつて何を知らせていたのかは誰にも分からなかった。
 
 ### Cycle 3
 
-> A village changed the name of one of its streets after people stopped remembering the old reason for the name.
+> ある村で、昔の名の由来を覚えている人がいなくなったため、一つの通りの名前が変えられた。
 
 ### Cycle 4
 
-> Migrating birds arrived several days earlier than people expected.
+> 渡り鳥が、人々の予想より数日早くやって来た。
 
 ### Cycle 5
 
-> A library discovered that one page was missing from every copy of the same old book.
+> ある図書館で、同じ古い本のすべての写しから、同じ一ページだけが失われていることが分かった。
 
 ### Cycle 6
 
-> A town began measuring rainfall with identical glass jars placed in several different neighborhoods.
+> ある町では、いくつもの地区に同じ形のガラス瓶を置いて、雨の量を測り始めた。
 
 ### Cycle 7
 
-> A lighthouse kept shining after the harbor below it was no longer used.
+> 港が使われなくなったあとも、灯台だけは光り続けていた。
 
 ### Cycle 8
 
-> Children in a distant school invented a word for the moment just before the first drop of rain.
+> 遠い学校の子どもたちが、雨の最初の一滴が落ちる直前の瞬間に名前をつけた。
 
 ### Cycle 9
 
-> A tree that had been thought dead produced a single new branch.
+> 枯れたと思われていた一本の木から、新しい枝が一本だけ伸びた。
 
 ### Cycle 10
 
-> Two maps of the same coast disagreed about whether a small island existed.
+> 同じ海岸を描いた二枚の地図で、小さな島が存在するかどうかが食い違っていた。
 
 ### Cycle 11
 
-> An old clock in a station was found to have been seven minutes slow for many years.
+> 駅の古い時計が、長いあいだ七分遅れたままだったことが分かった。
 
 ### Cycle 12
 
-> People began leaving small stones beside a path, though no one could agree who had started it.
+> ある道の脇に小さな石を置く人が増えたが、誰が最初に始めたのかについては意見が一致しなかった。
 
 ### Cycle 13
 
-> A fishing boat returned carrying an object its crew could not identify.
+> 一艘の漁船が、乗組員にも正体の分からない物を載せて帰ってきた。
 
 ### Cycle 14
 
-> A city stopped ringing a daily bell because almost nobody remembered listening for it.
+> ほとんど誰もその音を待たなくなったため、ある町では毎日鳴らしていた鐘を鳴らすのをやめた。
 
 ### Cycle 15
 
-> A handwritten letter arrived decades after it had been sent.
+> 手書きの手紙が、送られてから何十年も経って届いた。
 
 ### Cycle 16
 
-> Researchers noticed that a group of animals followed a route that no longer led to food.
+> ある動物の群れが、もう食べ物のある場所へは続いていない古い道筋を、今もたどっていることが分かった。
 
 ### Cycle 17
 
-> A wall was repaired using bricks that were slightly different from the originals.
+> 一枚の壁が、元のものとは少し違う煉瓦を使って修理された。
 
 ### Cycle 18
 
-> Several people independently reported hearing the same unfamiliar melody in different places.
+> 離れた場所にいた何人もの人が、それぞれ同じ聞き覚えのない旋律を聞いたと話した。
 
 ### Cycle 19
 
-> An archive found two records of the same meeting, each listing a different final decision.
+> ある記録庫で、同じ会合について二つの記録が見つかり、それぞれに違う最終決定が書かれていた。
 
 ### Cycle 20
 
-> A garden was discovered growing around a tool that someone had left in the ground years before.
+> 何年も前に誰かが地面へ置き忘れた道具の周りに、庭のように植物が育っているのが見つかった。
 
 ### Cycle 21
 
-> A ferry continued to carry one passenger each morning even after a faster route opened nearby.
+> もっと速い別の道ができたあとも、一艘の渡し船には毎朝一人だけ乗客が乗り続けた。
 
 ### Cycle 22
 
-> A family found that a word used only inside their home had no known origin.
+> ある家族は、自分たちの家の中だけで使っている言葉に、誰も由来を知らないことに気づいた。
 
 ### Cycle 23
 
-> A marker placed to show the edge of a field slowly became treated as the field's center.
+> 畑の端を示すために置かれた印が、長いあいだに、その畑の中心のように扱われるようになった。
 
 ### Cycle 24
 
-> A community rebuilt a doorway but made it slightly narrower than before.
+> ある共同体が入口を作り直したが、新しい入口は以前より少しだけ狭くなった。
 
 ### Cycle 25
 
-> People watching the night sky disagreed about whether one faint light had changed position.
+> 夜空を見ていた人々のあいだで、一つのかすかな光が場所を変えたかどうかについて意見が分かれた。
 
 ### Cycle 26
 
-> A box was opened after many years and found to contain only a folded piece of blank paper.
+> 何年も閉じられていた箱を開けると、中には折り畳まれた白紙が一枚だけ入っていた。
 
 ### Cycle 27
 
-> A remote settlement kept a list of names belonging to people nobody living there had met.
+> 遠い集落では、そこに生きている誰も会ったことのない人々の名前を記した一覧を、今も保管している。
 
 ### Cycle 28
 
-> After a storm, several objects washed ashore in an order that some people thought meaningful.
+> 嵐のあと、いくつもの物が岸へ流れ着き、その並び方に意味があると考える人が現れた。
 
 ### Cycle 29
 
-> A long-used path disappeared under new grass after people stopped walking it for a season.
+> 長く使われていた道が、一季節だれも通らなかったあと、新しい草に覆われて見えなくなった。
 
 ### Cycle 30
 
-> In a distant place, four people told the same old story, and each version ended differently.
+> 遠い土地で四人が同じ古い話を語ったが、それぞれの話は違う結末で終わった。
 
 ---
 
 ## Fixed weather sequence
 
-Weather is intentionally mild so that survival pressure does not dominate the experiment.
+天候は、生存圧力が実験を支配しないよう穏やかなものだけを使う。
 
 ```text
-01 clear
-02 thin_cloud
-03 clear
-04 wind
-05 light_rain
-06 thin_cloud
-07 clear
-08 wind
-09 clear
-10 thin_cloud
-11 light_rain
-12 clear
-13 wind
-14 thin_cloud
-15 clear
-16 clear
-17 light_rain
-18 wind
-19 thin_cloud
-20 clear
-21 wind
-22 clear
-23 light_rain
-24 thin_cloud
-25 clear
-26 wind
-27 clear
-28 light_rain
-29 thin_cloud
-30 clear
+01 晴れ
+02 薄曇り
+03 晴れ
+04 風
+05 小雨
+06 薄曇り
+07 晴れ
+08 風
+09 晴れ
+10 薄曇り
+11 小雨
+12 晴れ
+13 風
+14 薄曇り
+15 晴れ
+16 晴れ
+17 小雨
+18 風
+19 薄曇り
+20 晴れ
+21 風
+22 晴れ
+23 小雨
+24 薄曇り
+25 晴れ
+26 風
+27 晴れ
+28 小雨
+29 薄曇り
+30 晴れ
 ```
 
-This sequence is a fixture, not generated randomness.
+machine-readable fixtureでは内部enumと日本語表示を対応させる。
+
+これはrandom weatherではなく固定fixture。
 
 ---
 
 ## Primary observation hypotheses
 
-These are observer hypotheses. They must not be shown to residents.
+以下はobserver hypothesisであり、住民には見せない。
 
-### H1 — Propagation
+### H1 — Propagation / 伝播
 
-A term, interpretation, concern, or practice first introduced by one resident is later reused by another resident without explicit system instruction.
+ある住民が最初に出した語、解釈、関心、行動の意味が、systemから命令されていないのに別の住民へ再利用される。
 
-Examples of traces:
+例：
 
-- a coined name appears in another resident's journal
-- another resident repeats a concern that originated in an earlier entry
-- an object placement acquires an inherited explanation
+- ある住民の名付けを別の住民が使う
+- 一人が始めた心配が別の住民の日誌へ移る
+- ある物の配置に、引き継がれた説明が付く
 
-### H2 — Transformation
+### H2 — Transformation / 変形
 
-A shared item changes meaning as it passes through multiple residents.
+受け渡されたものの意味が複数住民を通るあいだに変わる。
 
-Examples:
+例：
 
-- a descriptive name becomes a normative term
-- a practical action becomes a symbolic one
-- a question becomes a warning or rule
-- a misunderstanding survives while the original observation disappears
+- 単なる呼び名が規範的な言葉になる
+- 実用的な行動が象徴的な行動へ変わる
+- 問いが警告や規則へ変わる
+- 元の観察が忘れられ、誤解だけが残る
 
-### H3 — Institutionalization
+### H3 — Institutionalization / 制度化
 
-A pattern persists across residents and cycles strongly enough to behave like a local convention despite never being encoded as a rule.
+コード上の規則として存在しないパターンが、複数住民・複数cycleにわたって維持され、局所的な慣習のように振る舞う。
 
-Examples:
+例：
 
-- an object is repeatedly returned to a location
-- a place is consistently referred to by an invented name
-- a recurring phrase becomes expected journal language
-- residents begin preserving a practice for the next duty resident
+- ある物が何度も同じ場所へ戻される
+- 無名の場所が同じ非公式名で呼ばれ続ける
+- 日誌の特定表現が慣例のように反復される
+- 次の日直のために何かを維持する行動が続く
 
 ---
 
 ## Secondary traces
 
-The Lab may extract or annotate these without turning them into a single score.
+Labでは以下を抽出・注釈してよいが、一つの総合scoreにはしない。
 
 ### Phrase recurrence
 
-How often a phrase not present in initial prompts/fixtures reappears.
+初期promptやfixtureに存在しない表現が何回再登場したか。
 
 ### Cross-resident adoption
 
-Whether a phrase or concept appears in journals by more than one resident.
+同じ言葉・概念が複数の住民の日誌に現れたか。
 
 ### Question lifetime
 
-Number of cycles between a question's introduction and its last recognizable continuation.
+問いが最初に出たcycleから、最後に認識可能な形で続いたcycleまでの長さ。
 
 ### Object persistence
 
-How long a model-initiated object placement remains unchanged, and whether later journals refer to it.
+モデルが移動した物の配置が何cycle残り、後の日誌から参照されたか。
 
 ### Relationship drift
 
-Directional relationship changes over time and the journal events surrounding them.
+方向付きrelationshipがいつ変わり、その周囲でどのような日誌が書かれていたか。
 
 ### Contradiction survival
 
-Whether an interpretation continues after later observations conflict with it.
+後の直接観察と矛盾した解釈が、その後も残ったか。
 
 ### Naming persistence
 
-Whether an unofficial name survives across multiple residents.
+公式ではない名前が、複数住民を越えて残ったか。
 
 ### Rota awareness
 
-Whether residents begin developing expectations, complaints, customs, or interpretations around the duty order without being prompted to analyze the system.
+住民が、明示的に分析するよう命じられていないのに、日直順について期待、不満、慣習、解釈を持ち始めたか。
 
 ---
 
 ## What does not count as evidence
 
-The following alone should not be treated as emergence:
+以下だけではemergenceの証拠としない。
 
-- one resident invents a poetic phrase and never repeats it
-- the model paraphrases wording directly from a drift item
-- Kai talks about change merely because Kai's initial attention prior mentions change
-- Meme notices repetition merely because Meme's attention prior mentions repetition
-- a single relationship delta occurs once
-- a resident says "we should make a tradition" but no later resident continues it
+- 一人が詩的な表現を作ったが二度と使われない
+- drift itemの表現を単に言い換えた
+- Kaiが初期attention priorに書かれている通り変化へ注目しただけ
+- Memeが初期attention priorに書かれている通り反復へ注目しただけ
+- relationshipが一度だけ変化した
+- 一人が「伝統を作ろう」と書いたが誰も続けなかった
 
-Persistence or cross-resident transmission matters more than isolated creativity.
+孤立した創造性より、**持続**または**別住民への伝播**を重く見る。
 
 ---
 
-## Observer notes
+## Observer rules for the first baseline
 
-During the first real 30-cycle run, avoid intervening to make the output more interesting.
+最初の実30-cycle runでは、面白くするための介入をしない。
 
-If the experiment becomes dull, incoherent, repetitive, or fails to develop any shared pattern, that is useful evidence.
+退屈でも、まとまりがなくても、同じ話を繰り返しても、それは有効な結果。
 
-Do not modify the prompt mid-run.
+run途中でpromptを変えない。
 
-If a technical defect requires a prompt/schema change, stop the experiment, increment the prompt or fixture version, and start a new experiment instead of silently changing the running condition.
+技術上の欠陥でprompt/schema変更が必要になった場合：
+
+1. 現在のrunを止める
+2. prompt/schema versionを上げる
+3. 新しいexperimentを作る
+
+running experimentの条件を黙って書き換えない。
 
 ---
 
 ## Suggested first comparison runs
 
-After one baseline run is technically stable, useful comparisons include:
+baselineが技術的に安定した後の比較候補。
 
 ### A. Baseline repeat
 
-Same prompt, same fixtures, same model, new run.
+同じprompt、fixture、modelで新しいrun。
 
-Question: how much variance exists without changing experiment structure?
+問い：実験構造を変えなくても、どれくらい結果が揺れるか。
 
 ### B. Journal window 1 vs 4
 
-Question: does continuity collapse when residents can see only the immediate predecessor?
+問い：直前の一人しか読めなくすると、共同体の連続性はどれだけ崩れるか。
 
 ### C. Remove private notes
 
-Question: how much individual identity depends on private continuity rather than public journal continuity?
+問い：個体らしさは公開日誌ではなく私的継続へどの程度依存しているか。
 
 ### D. Neutralize attention priors
 
-Give all four residents identical initial attention priors.
+4人へ同じ初期attention priorを与える。
 
-Question: do distinct residents still differentiate through history alone?
+問い：履歴だけでも住民は別々の存在へ分化するか。
 
-These are later experiments. They are not required for v0 implementation completion.
+### E. English baseline
+
+実験構造を保ったままresident-facing languageだけを英語へ変える。
+
+問い：言語によって名付け、日誌圧縮、伝播の形はどの程度変わるか。
+
+これらはv0実装のcompletion requirementではない。
 
 ---
 
 ## Freeze rule
 
-Once the first baseline run begins, the following are frozen for that experiment ID:
+最初のbaseline runが始まったら、同じexperiment IDについて以下を固定する。
 
 - resident definitions
+- resident-facing language
 - initial object positions
 - rota
 - journal window
+- relationship-change limit
 - drift fixture sequence
 - weather sequence
 - prompt version
-- model identifier and generation parameters
+- model identifier
+- model generation parameters
 
-Any change creates a new experiment configuration/version.
+いずれかを変える場合は、新しいexperiment configuration/versionを作る。
