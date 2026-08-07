@@ -30,9 +30,11 @@ FOLKSが扱いたい自律性は、巨大な単独エージェントの万能さ
 - residents: **Kai / Fia / Tekt / Meme**
 - 4 residents, fixed rota
 - 30 logical cycles
+- baseline language: **Japanese**
 - one active resident per cycle
 - latest 4 shared journal entries
 - private self-memory only
+- at most one small relationship change per turn
 - tiny world with 3 places and 3 objects
 - one fixed outside drift item per cycle
 - no live news, real-time scheduling, or human conversation in the baseline
@@ -57,11 +59,12 @@ private memory  = resident-specific continuity
 
 **v0 design complete; implementation not started.**
 
-次に実装へ入る場合は、まず `CONTINUITY.md` と以下の3文書を読んでください。
+次に実装へ入る場合は、まず `CONTINUITY.md` と以下の文書を読んでください。
 
 1. [`docs/DESIGN.md`](./docs/DESIGN.md) — 作品設計、情報境界、世界と観察者
 2. [`docs/SPEC_V0.md`](./docs/SPEC_V0.md) — 実装仕様、型、validation、transaction、テスト
 3. [`docs/EXPERIMENT_V0.md`](./docs/EXPERIMENT_V0.md) — 初期状態、30件の漂着物、観察仮説
+4. [`docs/PROMPT_V0.md`](./docs/PROMPT_V0.md) — baseline resident promptとrepair契約
 
 ## Documents
 
@@ -70,6 +73,7 @@ private memory  = resident-specific continuity
 - [`docs/DESIGN.md`](./docs/DESIGN.md) — 現在の設計原則
 - [`docs/SPEC_V0.md`](./docs/SPEC_V0.md) — v0の実装仕様
 - [`docs/EXPERIMENT_V0.md`](./docs/EXPERIMENT_V0.md) — baseline experiment fixture
+- [`docs/PROMPT_V0.md`](./docs/PROMPT_V0.md) — resident-facing prompt contract
 - [`docs/IMPLEMENTATION.md`](./docs/IMPLEMENTATION.md) — 技術構成と実装方針
 - [`docs/OPEN_QUESTIONS.md`](./docs/OPEN_QUESTIONS.md) — v0以後に残した問い
 
