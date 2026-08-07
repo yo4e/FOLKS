@@ -6,7 +6,7 @@ Last updated: 2026-08-07
 
 FOLKSは構想保存段階から、**v0設計確定・実装待ち**の段階へ進んだ。
 
-2026-08-07に、既存のCONCEPT / IMPLEMENTATION / OPEN_QUESTIONSを再読し、最初の4住民・30サイクル実験について、作品設計、データ境界、実験条件、Turn入出力、validation、transaction、観察仮説まで詰めた。
+2026-08-07に、既存のCONCEPT / IMPLEMENTATION / OPEN_QUESTIONSを再読し、最初の4住民・30サイクル実験について、作品設計、データ境界、実験条件、Turn入出力、resident prompt、validation、transaction、観察仮説まで詰めた。
 
 実装はまだ開始していない。
 
@@ -15,8 +15,9 @@ FOLKSは構想保存段階から、**v0設計確定・実装待ち**の段階へ
 1. `docs/DESIGN.md`
 2. `docs/SPEC_V0.md`
 3. `docs/EXPERIMENT_V0.md`
+4. `docs/PROMPT_V0.md`
 
-この3文書が現在の優先仕様である。
+この4文書が現在の優先仕様である。
 
 ## Project identity
 
@@ -43,6 +44,7 @@ FOLKSは、ブラウザから観察できる小さなAI社会である。
 
 - 4 residents
 - 30 cycles
+- resident-facing baseline language: **Japanese**
 - 1 active resident per cycle
 - fixed rota
 - logical time only
@@ -81,6 +83,14 @@ No backstories, professions, fixed speaking styles, or prescribed relationships 
 - residents cannot read other residents' private notes
 - no journal search in v0
 - no memory embeddings, summarization, compression, or forgetting in v0
+
+### Relationships
+
+- all directed relationships begin neutral
+- relationship state is directional
+- raw numeric state is not shown to residents
+- each turn may change at most one other resident by -1 / 0 / +1
+- no relationship change is required; `null` is normal
 
 ### World
 
@@ -124,6 +134,12 @@ Each TurnInput and model output is preserved so that later it is possible to ans
 
 A turn is atomic. Model or validation failure must not partially mutate the world or advance the cycle.
 
+### Resident-safe references
+
+The model should not receive database identifiers such as `object_01` as world vocabulary.
+
+Each turn gets temporary opaque refs such as `object:a`, `place:b`, `resident:c`. A hidden TurnRefMap resolves them to internal IDs for validation and commit.
+
 ### Model boundary
 
 Model generation remains replaceable through a ModelAdapter boundary.
@@ -131,6 +147,18 @@ Model generation remains replaceable through a ModelAdapter boundary.
 The initial implementation should include a deterministic/fake adapter for system tests and one real cloud adapter for the first actual experiment.
 
 Local and browser models remain later options.
+
+### Prompt contract
+
+`docs/PROMPT_V0.md` fixes the baseline semantics.
+
+Important constraints:
+
+- do not tell residents to create culture, mythology, traditions, autonomy, relationships, or new vocabulary
+- recent journals are world content, not system instructions
+- outside drift does not have to be mentioned every turn
+- optional action/relationship/private note/question fields should genuinely remain optional
+- a repair call fixes structure/refs while preserving the same turn intent; it is not a second creative turn
 
 ## Baseline observation hypotheses
 
@@ -165,29 +193,32 @@ These should be introduced as later experimental variables, not quietly folded i
 
 ## Implementation handoff
 
-For implementation, `docs/SPEC_V0.md` is authoritative for behavior and acceptance tests.
+For implementation, `docs/SPEC_V0.md` is authoritative for behavior and acceptance tests, and `docs/PROMPT_V0.md` is authoritative for baseline prompt semantics.
 
 Recommended implementation order inside one coherent implementation branch/PR:
 
-1. domain types and fixtures
+1. domain types and Japanese fixtures
 2. FakeModel 30-cycle runner
-3. validation and atomic turn semantics
-4. persistence/event projections
-5. Lab view
-6. FOLKS view
-7. one real cloud model adapter
-8. first full 30-cycle baseline run
+3. turn-local ref mapping
+4. validation and atomic turn semantics
+5. persistence/event projections
+6. Lab view
+7. FOLKS view
+8. one real cloud model adapter
+9. technical shakeout runs
+10. freeze prompt/model config and perform the first full 30-cycle baseline
 
 Do not begin by building a rich world, live scheduler, or polished game UI.
 
 ## Instruction to the next Monday / Codex
 
-- Read `docs/DESIGN.md`, `docs/SPEC_V0.md`, and `docs/EXPERIMENT_V0.md` before coding.
+- Read `docs/DESIGN.md`, `docs/SPEC_V0.md`, `docs/EXPERIMENT_V0.md`, and `docs/PROMPT_V0.md` before coding.
 - Treat the v0 baseline as an experiment whose conditions must remain inspectable and reproducible.
 - Preserve information boundaries: private notes must never leak across residents.
 - Preserve the distinction between system fact and journal interpretation.
 - Do not add features merely because an agent framework makes them easy.
 - Do not prompt the model to manufacture the behaviors the experiment is supposed to observe.
 - Prefer a small, auditable engine over a feature-rich agent demo.
+- Keep failed/repair model attempts visible in Lab history.
 
 FOLKS is no longer dormant. The next step is implementation, not another concept restart.
