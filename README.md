@@ -59,6 +59,8 @@ private memory  = resident-specific continuity
 
 **v0 design complete; implementation not started.**
 
+2026-08-08のpre-implementation review（Issue #1）も設計へ反映済みです。作品／実験条件は変更せず、structured output、repair監査、prompt/context budget、duplicate claim / stale generation recovery、FOLKS/Labデータ境界、export境界を実装前ゲートとして明文化しました。
+
 次に実装へ入る場合は、まず `CONTINUITY.md` と以下の文書を読んでください。
 
 1. [`docs/DESIGN.md`](./docs/DESIGN.md) — 作品設計、情報境界、世界と観察者
@@ -66,6 +68,7 @@ private memory  = resident-specific continuity
 3. [`docs/EXPERIMENT_V0.md`](./docs/EXPERIMENT_V0.md) — 初期状態、30件の漂着物、観察仮説
 4. [`docs/PROMPT_V0.md`](./docs/PROMPT_V0.md) — baseline resident promptとrepair契約
 5. [`docs/UI_V0.md`](./docs/UI_V0.md) — FOLKS view / Lab view / 操作意味
+6. [`docs/IMPLEMENTATION_GATES_V0.md`](./docs/IMPLEMENTATION_GATES_V0.md) — baseline前に通す信頼性・監査ゲート
 
 ## Documents
 
@@ -76,6 +79,7 @@ private memory  = resident-specific continuity
 - [`docs/EXPERIMENT_V0.md`](./docs/EXPERIMENT_V0.md) — baseline experiment fixture
 - [`docs/PROMPT_V0.md`](./docs/PROMPT_V0.md) — resident-facing prompt contract
 - [`docs/UI_V0.md`](./docs/UI_V0.md) — 観察画面とLab画面の設計
+- [`docs/IMPLEMENTATION_GATES_V0.md`](./docs/IMPLEMENTATION_GATES_V0.md) — pre-baseline reliability / audit gates
 - [`docs/IMPLEMENTATION.md`](./docs/IMPLEMENTATION.md) — 技術構成と実装方針
 - [`docs/OPEN_QUESTIONS.md`](./docs/OPEN_QUESTIONS.md) — v0以後に残した問い
 
