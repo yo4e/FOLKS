@@ -65,6 +65,7 @@ private memory  = resident-specific continuity
 2. [`docs/SPEC_V0.md`](./docs/SPEC_V0.md) — 実装仕様、型、validation、transaction、テスト
 3. [`docs/EXPERIMENT_V0.md`](./docs/EXPERIMENT_V0.md) — 初期状態、30件の漂着物、観察仮説
 4. [`docs/PROMPT_V0.md`](./docs/PROMPT_V0.md) — baseline resident promptとrepair契約
+5. [`docs/UI_V0.md`](./docs/UI_V0.md) — FOLKS view / Lab view / 操作意味
 
 ## Documents
 
@@ -74,6 +75,7 @@ private memory  = resident-specific continuity
 - [`docs/SPEC_V0.md`](./docs/SPEC_V0.md) — v0の実装仕様
 - [`docs/EXPERIMENT_V0.md`](./docs/EXPERIMENT_V0.md) — baseline experiment fixture
 - [`docs/PROMPT_V0.md`](./docs/PROMPT_V0.md) — resident-facing prompt contract
+- [`docs/UI_V0.md`](./docs/UI_V0.md) — 観察画面とLab画面の設計
 - [`docs/IMPLEMENTATION.md`](./docs/IMPLEMENTATION.md) — 技術構成と実装方針
 - [`docs/OPEN_QUESTIONS.md`](./docs/OPEN_QUESTIONS.md) — v0以後に残した問い
 
