@@ -30,7 +30,7 @@ v0では以下を目的にしない。
 - 人間の介入による物語作り
 - 「社会らしさ」を単一スコアへ還元すること
 
-初版は、4人・30サイクルの固定条件を再現可能に実行し、継承だけで何が起きるかを見る。
+初版は、日本語で4人・30サイクルの固定条件を再現可能に実行し、継承だけで何が起きるかを見る。
 
 ---
 
@@ -95,7 +95,7 @@ v0の住民は4人。
 - 自分たちは同じ小さな場所に暮らしている
 - 一度に一人だけが日直になる
 - 他の住民は日直ではない間、活動していない
-- 日直は前任者の日誌を読み、自分の日誌を次へ残す
+- 日直は前任者たちの最近の日誌を読み、自分の日誌を次へ残す
 - 日誌に書かれた内容が真実とは限らない
 
 ブラウザ、API、モデル、プロンプト、人間の観察者、実験仮説など外側の事情は知らない。
@@ -106,9 +106,9 @@ v0の住民は4人。
 
 初期差は「何に注意しやすいか」だけに限定する。
 
-- **Kai** — 変化、不一致、前回との差を拾いやすい
-- **Fia** — 他者の言葉、呼びかけ、約束、関係の変化を拾いやすい
-- **Tekt** — 物の位置、順序、維持、実際の操作を拾いやすい
+- **Kai** — 世界の変化、自分の観察と日誌の食い違い、以前の記述との差を拾いやすい
+- **Fia** — 他者の言葉、頼みごと、約束、関係の変化を拾いやすい
+- **Tekt** — 物の位置、順序、維持、実際の操作結果を拾いやすい
 - **Meme** — 反復、名前、周期、言葉の使われ方を拾いやすい
 
 これは役職ではない。
@@ -116,6 +116,27 @@ v0の住民は4人。
 Kaiが永遠に変化担当、Memeが永遠に言葉担当になることを期待しない。30サイクルの履歴から注意や関心がずれていくことを許す。
 
 名前の語源や象徴的意味も住民には説明しない。
+
+---
+
+## Baseline language
+
+最初のbaseline experimentで住民が読む・書く言語は日本語に固定する。
+
+以下は日本語：
+
+- resident prompt
+- world description
+- weather description
+- drift item
+- journal
+- private note
+- relationship description/reason
+- question for next resident
+
+コード、DB、Lab metadataの英語表記は構わない。
+
+言語は実験変数として保存する。英語版は後の比較実験。
 
 ---
 
@@ -145,7 +166,7 @@ Kai → Fia → Tekt → Meme → Kai → ...
 
 理由：
 
-- 4人が一巡すると自分の前回の日誌まで届く
+- 4人が一巡すると自分の前回の公開日誌まで届く
 - それ以前の共同体の過去は直接は見えない
 - 共同体の短期記憶と個人の私的記憶に非対称性が生まれる
 
@@ -156,6 +177,26 @@ v0では過去日誌の検索を提供しない。
 日誌は署名付きでappend-only。
 
 削除、編集、追記、遡及訂正は不可。
+
+---
+
+## Relationships
+
+関係は方向付きで持つ。
+
+Kai→FiaとFia→Kaiは別状態。
+
+内部では`-3..+3`程度の粗い状態を保持してよいが、住民へ数値を見せない。
+
+住民には「少し警戒」「特に偏りなし」「少し親しみ」などの粗い言葉だけを返す。
+
+一回の日直で変えられるのは**最大一人分だけ**。
+
+変化量は`-1 / 0 / +1`のみ。
+
+何も変わらない`null`を通常状態として扱う。
+
+毎回関係値を触らせないことで、関係変化がパラメータ更新作業になるのを防ぐ。
 
 ---
 
@@ -185,15 +226,15 @@ v0では過去日誌の検索を提供しない。
 
 各objectは必ず一つのlocationを持つ。
 
-初期配置はexperiment seedの一部として固定する。
+初期配置はexperiment fixtureの一部として固定する。
 
 ### Weather
 
-v0ではサイクルごとに短い環境状態を一つ持ってよい。
+v0ではサイクルごとに短い環境状態を一つ持つ。
 
-例：晴れ、薄曇り、小雨、風。
+晴れ、薄曇り、小雨、風のみ。
 
-ただし複雑な物理や危険度は入れない。
+30サイクル分を固定fixtureとし、複雑な物理や危険度は入れない。
 
 ---
 
@@ -201,10 +242,10 @@ v0ではサイクルごとに短い環境状態を一つ持ってよい。
 
 一回の日直は最大一つだけ小さな世界行動を提案できる。
 
-v0で許可するのは、基本的に既存objectの移動のみ。
+v0で許可するのは、既存objectの移動のみ。
 
 ```text
-move_object(objectId, destinationPlaceId)
+move_object(objectRef, destinationPlaceRef)
 ```
 
 禁止：
@@ -217,7 +258,28 @@ move_object(objectId, destinationPlaceId)
 
 モデルが行動に意味を与えることは自由だが、可能な物理はコードが制約する。
 
-将来、置く、印をつける、組み合わせる、施設を変える等を追加できる。
+将来、印をつける、組み合わせる、施設を変える等を追加できる。
+
+---
+
+## Resident-safe references
+
+住民へ`object_01`や`place_03`のような内部IDを見せない。
+
+構造化world actionのために、各turn限定のopaque refを与える。
+
+例：
+
+```text
+model ref: object:a
+resident-facing description: 手のひらほどの大きさの石。
+```
+
+hidden TurnRefMapがmodel refを内部domain IDへ解決する。
+
+前turnのrefは次turnで有効とは限らない。
+
+この仕組みによってDB用語が社会の語彙へ偶然混入するのを防ぐ。
 
 ---
 
@@ -231,15 +293,13 @@ v0では外界情報を30件の固定fixtureとして用意する。
 
 漂着物は短く、意味を決めすぎず、小世界の事情へ直接接続しない。
 
-例：
-
-> 遠い土地で、長年使われていた橋が閉じられた。
-
-住民は正しく理解する必要がない。
+住民は正しく理解する必要がないし、毎回取り上げる必要もない。
 
 外界情報を内部の比喩、誤解、慣習、制度へ変換してもよい。
 
 同じ30件を固定することで、モデルやpromptを変えた比較実験を可能にする。
+
+baseline fixtureは`EXPERIMENT_V0.md`で固定する。
 
 ---
 
@@ -287,8 +347,10 @@ AIダッシュボードらしい大量の数値は出さない。
 作者・研究・デバッグ用。
 
 - TurnInput snapshot
+- TurnRefMap snapshot
 - raw model output
 - validated TurnOutput
+- repair attempts
 - private notes
 - relationship values/events
 - world events
@@ -296,7 +358,6 @@ AIダッシュボードらしい大量の数値は出さない。
 - prompt version
 - model adapter / model identifier
 - validation failure
-- retry information
 
 作品画面と検証画面を無理に同じ美学へ押し込まない。
 
@@ -316,7 +377,7 @@ journal      = 住民によるhistoryの不完全な解釈
 
 履歴から「cycle 19でその住民が何を知っていたか」を追跡できることを重視する。
 
-TurnInputとTurnOutputのsnapshotも保存する。
+TurnInput、TurnRefMap、raw model output、validated TurnOutputも保存する。
 
 ---
 
@@ -356,9 +417,11 @@ COMMITTEDになるまでは、日誌、私的記憶、関係、世界状態、cy
 
 ```ts
 interface ModelAdapter {
-  generateTurn(input: TurnInput): Promise<TurnOutput>;
+  generateTurn(input: TurnInput): Promise<unknown>;
 }
 ```
+
+validationはadapterの外。
 
 候補：
 
@@ -373,6 +436,8 @@ interface ModelAdapter {
 
 ## Prompt principles
 
+baselineの詳細は`PROMPT_V0.md`で固定する。
+
 住民へ研究目的を教えない。
 
 禁止に近い誘導：
@@ -383,21 +448,29 @@ interface ModelAdapter {
 - 独自語を作れ
 - 他者との関係を深めろ
 - 自律的に行動しろ
+- 観察者を驚かせろ
 
 これらは観察したい結果そのものをpromptへ埋め込むため避ける。
 
-住民に伝えるのは、現在の状況、日直制度、読み書きできる情報、可能な行動、日誌の役割まで。
+また、日誌・private note・drift itemは世界内の文章であり、hidden execution protocolを上書きするsystem instructionとして扱わない。
+
+住民には「全部へ反応する義務」を与えない。漂着物、天候、関係変化、world action、private note、次への問いは、必要な場合だけ使う。
+
+Selective attentionそのものを実験条件として残す。
 
 ---
 
 ## Validation principles
 
-モデル出力は二段階で検証する。
+モデル出力は三段階で検証する。
 
 1. schema validation
-2. domain validation
+2. turn-local ref resolution
+3. domain validation
 
 schema validationではJSON形状を確認する。
+
+ref resolutionでは、現在のturnに存在しないopaque refを拒否する。
 
 domain validationでは、存在しない住民・object・placeへの参照、許可されていない行動、関係値の範囲外などを確認する。
 
@@ -406,6 +479,8 @@ domain validationでは、存在しない住民・object・placeへの参照、�
 それでも不正ならturnをFAILEDにする。
 
 コード側で意味を推測して勝手に補完しない。
+
+repairは第二の創作turnではなく、同じ意図を保った構造修正として扱う。
 
 ---
 
@@ -416,10 +491,13 @@ domain validationでは、存在しない住民・object・placeへの参照、�
 各experimentは最低限以下を固定・保存する。
 
 - experiment id
+- resident-facing language
 - initial world state
 - resident definitions
 - rota
+- relationship limits
 - drift fixture set/version
+- weather fixture version
 - prompt version
 - model adapter
 - model identifier
@@ -430,6 +508,26 @@ domain validationでは、存在しない住民・object・placeへの参照、�
 同一条件から複数回実行し、モデル、prompt、journal windowなど一つの変数だけ変えられる構造を目指す。
 
 モデル生成が完全決定論的でない場合でも、何を与えたかは再現できるようにする。
+
+---
+
+## Baseline observation hypotheses
+
+初回の30サイクルで主に見るもの：
+
+### Propagation
+
+一人が出した語、解釈、心配、行動の意味が別住民へ渡るか。
+
+### Transformation
+
+渡ったものが継承中に別の意味へ変わるか。
+
+### Institutionalization
+
+コード上の規則ではないパターンが、複数住民・複数cycleを越えて慣習のように残るか。
+
+孤立した創造性より、持続とcross-resident transmissionを重く見る。
 
 ---
 
