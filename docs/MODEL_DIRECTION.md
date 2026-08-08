@@ -58,6 +58,14 @@ The interesting future question is then closer to:
 
 That is distinct from asking whether a strong pretrained model can convincingly role-play a society.
 
+## Possible future connection to SUDACHI
+
+A later experimental condition may use a **SUDACHI organism as a FOLKS resident** once SUDACHI has independently demonstrated useful developmental behavior.
+
+In that arrangement, FOLKS could provide the shared world, rota, journals, and social environment, while SUDACHI could provide the resident-specific body, memory, skills, bounded assistance, and developmental history.
+
+This is only a future possibility, not a current dependency or integration requirement. No interface, lifecycle mapping, or shared-state contract between the projects is fixed yet; both projects should be allowed to mature independently before deciding whether the connection is scientifically useful.
+
 ## Why the current implementation is still useful
 
 The existing FOLKS implementation should remain the experiment harness:
