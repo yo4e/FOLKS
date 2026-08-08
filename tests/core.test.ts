@@ -499,6 +499,35 @@ describe("FOLKS v0 turn engine", () => {
     expect(adapter.generateCalls).toHaveLength(2);
   });
 
+  it("retries repair transport without resampling the baseline creative output", async () => {
+    const { store, experiment } = createMemoryExperiment();
+    const adapter = new FakeModelAdapter({
+      generationOutputs: [{ journalText: "repairが必要な出力" }],
+      onRepair: (_input, _invalidOutput, _validationErrors, callNumber) => {
+        if (callNumber === 1) {
+          throw new Error("temporary repair transport failure");
+        }
+        return validOutput();
+      },
+    });
+    const engine = new TurnEngine(store, adapter);
+    const first = await engine.runNextTurn(experiment.id);
+    expect(first.committed).toBe(false);
+    expect(first.turn.status).toBe("FAILED");
+    expect(first.turn.failureKind).toBe("transport");
+    expect(adapter.generateCalls).toHaveLength(1);
+    expect(adapter.repairCalls).toHaveLength(1);
+    expect(store.getTurn(first.turn.id)?.modelRuns).toHaveLength(2);
+
+    const second = await engine.runNextTurn(experiment.id);
+    expect(second.committed).toBe(true);
+    expect(second.reusedPersistedResponse).toBe(true);
+    expect(adapter.generateCalls).toHaveLength(1);
+    expect(adapter.repairCalls).toHaveLength(2);
+    expect(store.getTurn(first.turn.id)?.modelRuns).toHaveLength(3);
+    expect(store.getExperiment(experiment.id)?.committedCycle).toBe(1);
+  });
+
   it("does not perform a second repair after recovery finds a persisted repair", async () => {
     const { store, experiment } = createMemoryExperiment();
     const claim = store.claimNextTurn(experiment.id, "2020-01-01T00:00:00.000Z");

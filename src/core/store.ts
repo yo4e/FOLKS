@@ -432,6 +432,14 @@ export class InMemoryExperimentStore implements ExperimentStore {
       if (!mutable) {
         throw new Error("Turn disappeared during claim.");
       }
+      const retryPersistedResponse =
+        existing.failureKind === "transport" &&
+        existing.modelRuns.some(
+          (run) =>
+            (run.kind === "generation" || run.kind === "repair") &&
+            run.rawOutput !== null &&
+            run.rawOutput !== undefined,
+        );
       mutable.status = "GENERATING";
       mutable.executionToken = crypto.randomUUID();
       mutable.claimedAt = now;
@@ -441,7 +449,11 @@ export class InMemoryExperimentStore implements ExperimentStore {
       if (experiment.status === "paused") {
         experiment.status = "running";
       }
-      return { owner: true, turn: copy(mutable) };
+      return {
+        owner: true,
+        turn: copy(mutable),
+        retryPersistedResponse,
+      };
     }
 
     const turn = initialTurn(experimentId, cycle, now);

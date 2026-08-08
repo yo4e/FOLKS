@@ -135,7 +135,10 @@ export class TurnEngine {
         reusedPersistedResponse: false,
       };
     }
-    return this.executeClaimedTurn(claim.turn, false);
+    return this.executeClaimedTurn(
+      claim.turn,
+      claim.retryPersistedResponse === true,
+    );
   }
 
   async recoverStaleTurn(

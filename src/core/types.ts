@@ -252,7 +252,11 @@ export type ValidationIssue = {
 };
 
 export type ClaimResult =
-  | { owner: true; turn: TurnRecord }
+  | {
+      owner: true;
+      turn: TurnRecord;
+      retryPersistedResponse?: boolean;
+    }
   | { owner: false; turn: TurnRecord };
 
 export type FolksViewModel = {
