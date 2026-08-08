@@ -57,13 +57,19 @@ private memory  = resident-specific continuity
 
 ## Current status
 
-**v0 design finalized; implementation ready, implementation not started.**
+**v0 vertical slice implemented on the issue #2 branch.**
+
+The local implementation now includes the deterministic 30-cycle runner, resident-safe
+input boundary, strict validation/repair path, stale-turn recovery, SQLite/Drizzle
+audit persistence, FOLKS/Lab views, and an OpenAI-compatible cloud adapter. The real
+provider shakeout and first meaningful cloud baseline remain environment-dependent;
+the default local path uses FakeModelAdapter.
 
 2026-08-08の最終全体レビューで、作品の核は維持したまま、baselineを汚しうる点を `docs/FINALIZATION_V0.md` に修正しました。主な修正は、漂着物のテーマ誘導を弱めたneutral fixture、resident-visible inputから実験ID／30-cycle horizonを除外、baselineの再生成selection bias防止、experiment stateの明確化、日誌の最低文字数強制の撤廃です。
 
 GitHub Copilotによるpre-implementation review（Issue #1）も設計へ反映済みで、structured output、repair監査、prompt/context budget、duplicate claim / stale generation recovery、FOLKS/Labデータ境界、export境界を実装前ゲートとして明文化しています。
 
-次に実装へ入る場合は、以下の順で読んでください。
+実装の前提と受入ゲートは、以下の文書に固定しています。
 
 1. [`docs/FINALIZATION_V0.md`](./docs/FINALIZATION_V0.md) — **最終修正。競合時はこの文書を優先**
 2. [`docs/DESIGN.md`](./docs/DESIGN.md) — 作品設計、情報境界、世界と観察者
