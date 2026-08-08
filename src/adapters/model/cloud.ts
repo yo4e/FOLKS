@@ -27,6 +27,10 @@ type OpenAICompatibleResponse = {
   };
 };
 
+function redactCredential(message: string, credential: string): string {
+  return credential.length > 0 ? message.split(credential).join("[REDACTED]") : message;
+}
+
 export type CloudModelOptions = {
   endpoint: string;
   apiKey: string;
@@ -79,6 +83,7 @@ export class CloudModelAdapter implements ModelAdapter {
   }
 
   private async request(userPrompt: string): Promise<unknown> {
+    this.lastResponseMetadata = null;
     const response = await this.fetchImpl(this.endpoint, {
       method: "POST",
       headers: {
@@ -100,8 +105,11 @@ export class CloudModelAdapter implements ModelAdapter {
     const payload = (await response.json()) as OpenAICompatibleResponse;
     if (!response.ok) {
       throw new Error(
-        "Cloud model request failed: " +
-          (payload.error?.message ?? response.statusText),
+        redactCredential(
+          "Cloud model request failed: " +
+            (payload.error?.message ?? response.statusText),
+          this.apiKey,
+        ),
       );
     }
     const content = payload.choices?.[0]?.message?.content;

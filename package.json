@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
-    "measure:context": "tsx scripts/measure-context.ts"
+    "measure:context": "tsx scripts/measure-context.ts",
+    "shakeout:preflight": "tsx scripts/technical-shakeout.ts --preflight",
+    "shakeout:cloud": "tsx scripts/technical-shakeout.ts --run"
   },
   "dependencies": {
     "better-sqlite3": "^11.10.0",

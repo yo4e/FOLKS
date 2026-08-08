@@ -37,6 +37,8 @@ FOLKS v0の垂直スライスは **`main` にmerge済み**。
 
 **Meaningful cloud baselineはまだ実行していない。**
 
+Issue #5向けに、credentialをログ・prompt・DB exportへ出さないbounded technical shakeout runnerを追加した。cloud設定不備はFakeへ黙ってfallbackせず、未レビュー段階ではweb UI/APIのbaseline作成も無効にしている。
+
 次の不確実性は、作品設計やローカルengineではなく、実provider上でのstructured output、repair、token usage、model behaviorにある。
 
 ## Next milestone
@@ -58,6 +60,8 @@ baselineをいきなり開始しない。
 9. **fresh baseline experiment ID** を作る。
 10. 30 cyclesを途中で条件変更せず実行する。
 11. 実行後にpublic historyとLab auditを保存して読む。
+
+実行コマンドと現在のcredential待ち状態は `docs/TECHNICAL_SHAKEOUT_ISSUE_5.md` に記録している。real-providerのstructured output、repair、provider context usageが未確認のままなので、baseline条件はまだfreezeしていない。
 
 ## Baseline observation
 
