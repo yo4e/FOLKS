@@ -4,7 +4,7 @@ Last updated: 2026-08-08
 
 ## Current state
 
-FOLKSは、**v0設計最終化・実装可能**の段階にある。実装コードはまだ開始していない。
+FOLKSは、**v0垂直スライスの実装・ローカル検証済み**の段階にある。Issue #2用の専用ブランチで、FakeModelによる30サイクル実行、監査用SQLite/Drizzle、FOLKS/Lab画面、Cloud adapterまで接続した。
 
 2026-08-07に、CONCEPT / IMPLEMENTATION / OPEN_QUESTIONSを再読し、最初の4住民・30サイクル実験について、作品設計、データ境界、実験条件、Turn入出力、resident prompt、validation、transaction、画面と操作、観察仮説まで詰めた。
 
@@ -305,4 +305,35 @@ Do not begin by building a rich world, live scheduler, or polished game UI.
 - Do not repeatedly resample a failed baseline creative turn.
 - Never erase an old run merely because the observer wants to start again.
 
-FOLKS v0 is ready for implementation. The next uncertainty should come from code and experiment shakeout, not another concept restart.
+FOLKS v0のローカル垂直スライスは実装済み。次の不確実性は、コードではなく実providerのshakeoutと、credential/environmentが許す範囲でのbaseline実行から得る。
+
+## Issue #2 implementation handoff
+
+実装ブランチでは、以下を完了している。
+
+- TypeScript domain types、最終版neutral/resonant drift、weather、初期world fixture
+- resident-visible TurnInputとturn-local opaque ref map
+- schema/ref/domain validation、最大1回のrepair、baseline failure policy
+- database-backed turn row、duplicate claim、stale generation recovery
+- atomic commit、append-only journal/private/relationship/world records、replay integrity
+- deterministic FakeModelによる30 cycle runnerと14件の受入テスト
+- SQLite + Drizzle persistence、監査JSON export
+- structurally publicなFOLKS viewと詳細Lab view
+- OpenAI-compatible CloudModelAdapterとprovider usage metadata保存
+- worst-case context measurement script
+
+確認済みコマンド：
+
+- npm run typecheck
+- npm test
+- npm run lint
+- npm run build
+- npm run measure:context
+
+未実行の環境依存ゲート：
+
+- 実providerのstructured-output shakeout
+- provider/context windowの実測値
+- 実credentialを用いた最初のbaseline 30-cycle run
+
+実providerを使う場合は、FOLKS_MODEL_ADAPTER=cloud、OPENAI_API_KEY、FOLKS_MODEL_IDを設定し、まずtechnical experimentでshakeoutしてからfresh baselineを作る。
