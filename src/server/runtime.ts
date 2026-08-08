@@ -27,12 +27,18 @@ export function createAdapter(): ModelAdapter {
         "FOLKS_MODEL_ADAPTER=cloud requires OPENAI_API_KEY in the local environment.",
       );
     }
+    const modelIdentifier = process.env.FOLKS_MODEL_ID?.trim();
+    if (!modelIdentifier) {
+      throw new Error(
+        "FOLKS_MODEL_ADAPTER=cloud requires FOLKS_MODEL_ID in the local environment.",
+      );
+    }
     return new CloudModelAdapter({
       endpoint:
         process.env.FOLKS_MODEL_API_URL ??
         "https://api.openai.com/v1/chat/completions",
       apiKey,
-      modelIdentifier: process.env.FOLKS_MODEL_ID ?? "gpt-4o-mini",
+      modelIdentifier,
       temperature: DEFAULT_MODEL_PARAMETERS.temperature,
       maxOutputTokens: DEFAULT_MODEL_PARAMETERS.maxOutputTokens,
     });

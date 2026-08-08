@@ -2,11 +2,9 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { TechnicalFaultInjectionAdapter } from "../src/adapters/model/technical-fault";
 import { CloudModelAdapter } from "../src/adapters/model/cloud";
-import type {
-  ModelAdapter,
-  ModelResponseMetadata,
-} from "../src/adapters/model/types";
+import type { ModelAdapter } from "../src/adapters/model/types";
 import {
   DEFAULT_MODEL_PARAMETERS,
   DRIFT_BASELINE_VERSION,
@@ -17,6 +15,7 @@ import {
   WEATHER_FIXTURE_VERSION,
 } from "../src/core/constants";
 import { TurnEngine, type RunTurnResult } from "../src/core/engine";
+import { buildWorstCaseTurnInput } from "../src/core/context";
 import { buildTurnInput } from "../src/core/input";
 import {
   measurePromptContext,
@@ -59,10 +58,6 @@ type ReportedRun = {
 
 function hasEnv(name: string): boolean {
   return Boolean(process.env[name]?.trim());
-}
-
-function takeCharacters(value: string, length: number): string {
-  return Array.from(value).slice(0, length).join("");
 }
 
 function stableJson(value: unknown): string {
@@ -204,84 +199,6 @@ function readCloudConfiguration(): CloudConfiguration {
   };
 }
 
-function invalidateJsonOutput(value: unknown): unknown {
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value);
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        return JSON.stringify({
-          ...(parsed as Record<string, unknown>),
-          __technicalShakeoutInvalid: true,
-        });
-      }
-    } catch {
-      return value;
-    }
-    return value;
-  }
-  if (value && typeof value === "object" && !Array.isArray(value)) {
-    return {
-      ...(value as Record<string, unknown>),
-      __technicalShakeoutInvalid: true,
-    };
-  }
-  return { value, __technicalShakeoutInvalid: true };
-}
-
-class TechnicalFaultInjectionAdapter implements ModelAdapter {
-  readonly name: string;
-  readonly modelIdentifier: string;
-  readonly promptVersion: string;
-  readonly modelParameters: Readonly<Record<string, unknown>>;
-  generationCalls = 0;
-  repairCalls = 0;
-
-  private invalidateNext = false;
-  private failNextRepairTransport = false;
-
-  constructor(private readonly delegate: CloudModelAdapter) {
-    this.name = delegate.name;
-    this.modelIdentifier = delegate.modelIdentifier;
-    this.promptVersion = delegate.promptVersion;
-    this.modelParameters = delegate.modelParameters;
-  }
-
-  forceInvalidNextGeneration(): void {
-    this.invalidateNext = true;
-  }
-
-  forceNextRepairTransportFailure(): void {
-    this.failNextRepairTransport = true;
-  }
-
-  async generateTurn(input: TurnInput): Promise<unknown> {
-    this.generationCalls += 1;
-    const output = await this.delegate.generateTurn(input);
-    if (!this.invalidateNext) {
-      return output;
-    }
-    this.invalidateNext = false;
-    return invalidateJsonOutput(output);
-  }
-
-  async repairTurn(
-    input: TurnInput,
-    invalidOutput: unknown,
-    validationErrors: string[],
-  ): Promise<unknown> {
-    this.repairCalls += 1;
-    if (this.failNextRepairTransport) {
-      this.failNextRepairTransport = false;
-      throw new Error("intentional technical shakeout repair transport fault");
-    }
-    return this.delegate.repairTurn(input, invalidOutput, validationErrors);
-  }
-
-  getLastResponseMetadata(): ModelResponseMetadata | null {
-    return this.delegate.getLastResponseMetadata?.() ?? null;
-  }
-}
-
 function createShakeoutAdapter(configuration: CloudConfiguration): {
   cloud: CloudModelAdapter;
   adapter: TechnicalFaultInjectionAdapter;
@@ -360,25 +277,10 @@ function buildWorstCaseInput(
   experiment: Experiment,
   store: SqliteExperimentStore,
 ): TurnInput {
-  const built = buildTurnInput(
+  return buildWorstCaseTurnInput(
     experiment,
     store.getCurrentState(experiment.id),
-    experiment.totalCycles,
   );
-  const maximumJournal = takeCharacters("日", 500);
-  const maximumQuestion = takeCharacters("問い", 160);
-  const maximumPrivateNote = takeCharacters("私的メモ", 240);
-  built.input.recentJournal = [1, 2, 3, 4].map((cycle) => ({
-    cycle,
-    authorName: "Resident",
-    publicText: maximumJournal,
-    questionForNext: maximumQuestion,
-  }));
-  built.input.resident.privateNotes = [1, 2, 3, 4, 5, 6, 7].map((cycle) => ({
-    cycle,
-    text: maximumPrivateNote,
-  }));
-  return built.input;
 }
 
 function residentBoundaryCheck(

@@ -83,6 +83,7 @@ export class CloudModelAdapter implements ModelAdapter {
   }
 
   private async request(userPrompt: string): Promise<unknown> {
+    this.lastResponseMetadata = null;
     const response = await this.fetchImpl(this.endpoint, {
       method: "POST",
       headers: {
