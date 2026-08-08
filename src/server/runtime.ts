@@ -18,10 +18,15 @@ declare global {
   var __folksRuntime: FolksRuntime | undefined;
 }
 
-function createAdapter(): ModelAdapter {
+export function createAdapter(): ModelAdapter {
   const configured = process.env.FOLKS_MODEL_ADAPTER ?? "fake";
   const apiKey = process.env.OPENAI_API_KEY;
-  if (configured === "cloud" && apiKey) {
+  if (configured === "cloud") {
+    if (!apiKey) {
+      throw new Error(
+        "FOLKS_MODEL_ADAPTER=cloud requires OPENAI_API_KEY in the local environment.",
+      );
+    }
     return new CloudModelAdapter({
       endpoint:
         process.env.FOLKS_MODEL_API_URL ??
@@ -32,7 +37,16 @@ function createAdapter(): ModelAdapter {
       maxOutputTokens: DEFAULT_MODEL_PARAMETERS.maxOutputTokens,
     });
   }
-  return new FakeModelAdapter();
+  if (configured === "fake") {
+    return new FakeModelAdapter();
+  }
+  throw new Error(
+    "Unsupported FOLKS_MODEL_ADAPTER: " + configured + ". Use fake or cloud.",
+  );
+}
+
+export function baselineCreationAllowed(): boolean {
+  return process.env.FOLKS_ALLOW_BASELINE === "1";
 }
 
 export function getRuntime(): FolksRuntime {
@@ -57,11 +71,8 @@ export function ensureDefaultExperiment(): string {
     return existing.id;
   }
   return runtime.store.createExperiment({
-    name:
-      runtime.adapter.name === "fake"
-        ? "FOLKS technical shakeout"
-        : "FOLKS v0 baseline",
-    kind: runtime.adapter.name === "fake" ? "technical" : "baseline",
+    name: "FOLKS technical shakeout",
+    kind: "technical",
     modelAdapter: runtime.adapter.name,
     modelIdentifier: runtime.adapter.modelIdentifier,
     promptVersion: runtime.adapter.promptVersion || PROMPT_VERSION,

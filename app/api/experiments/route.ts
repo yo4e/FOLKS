@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { getRuntime } from "@/src/server/runtime";
+import {
+  baselineCreationAllowed,
+  getRuntime,
+} from "@/src/server/runtime";
 import type { ExperimentKind } from "@/src/core/types";
 
 export async function GET() {
@@ -14,14 +17,18 @@ export async function POST(request: Request) {
       kind?: ExperimentKind;
     };
     const runtime = getRuntime();
+    const requestedKind = body.kind ?? "technical";
+    if (requestedKind === "baseline" && !baselineCreationAllowed()) {
+      throw new Error(
+        "Baseline creation is disabled until the real-provider technical shakeout is reviewed.",
+      );
+    }
+    if (requestedKind === "baseline" && runtime.adapter.name === "fake") {
+      throw new Error("A baseline requires a configured cloud model adapter.");
+    }
     const experiment = runtime.store.createExperiment({
       name: body.name?.trim() || undefined,
-      kind:
-        runtime.adapter.name === "fake"
-          ? "technical"
-          : body.kind === "technical"
-            ? "technical"
-            : "baseline",
+      kind: requestedKind,
       modelAdapter: runtime.adapter.name,
       modelIdentifier: runtime.adapter.modelIdentifier,
       promptVersion: runtime.adapter.promptVersion,

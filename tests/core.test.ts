@@ -22,6 +22,10 @@ import {
 import { createInitialState } from "@/src/core/state";
 import { validateModelTurnOutput } from "@/src/core/validation";
 import { SqliteExperimentStore } from "@/src/server/db/sqlite-store";
+import {
+  baselineCreationAllowed,
+  createAdapter,
+} from "@/src/server/runtime";
 
 function validOutput(overrides: Record<string, unknown> = {}) {
   return {
@@ -683,6 +687,64 @@ describe("cloud model boundary", () => {
       outputTokens: 17,
       finishReason: "stop",
     });
+  });
+
+  it("redacts a credential echoed by a provider error", async () => {
+    const { store, experiment } = createMemoryExperiment();
+    const built = buildTurnInput(
+      experiment,
+      store.getCurrentState(experiment.id),
+      1,
+    );
+    const credential = "secret-key-that-must-not-leak";
+    const adapter = new CloudModelAdapter({
+      endpoint: "https://provider.invalid/chat",
+      apiKey: credential,
+      modelIdentifier: "cloud-test",
+      fetchImpl: async () =>
+        new Response(
+          JSON.stringify({ error: { message: "provider saw " + credential } }),
+          { status: 401, statusText: "Unauthorized" },
+        ),
+    });
+    let errorMessage = "";
+    try {
+      await adapter.generateTurn(built.input);
+    } catch (error) {
+      errorMessage = error instanceof Error ? error.message : String(error);
+    }
+    expect(errorMessage).toContain("[REDACTED]");
+    expect(errorMessage).not.toContain(credential);
+  });
+});
+
+describe("runtime shakeout safety", () => {
+  it("does not silently downgrade a requested cloud adapter without a credential", () => {
+    const previousAdapter = process.env.FOLKS_MODEL_ADAPTER;
+    const previousKey = process.env.OPENAI_API_KEY;
+    try {
+      process.env.FOLKS_MODEL_ADAPTER = "cloud";
+      delete process.env.OPENAI_API_KEY;
+      expect(() => createAdapter()).toThrow("requires OPENAI_API_KEY");
+    } finally {
+      if (previousAdapter === undefined) delete process.env.FOLKS_MODEL_ADAPTER;
+      else process.env.FOLKS_MODEL_ADAPTER = previousAdapter;
+      if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+      else process.env.OPENAI_API_KEY = previousKey;
+    }
+  });
+
+  it("keeps baseline creation disabled unless explicitly enabled", () => {
+    const previous = process.env.FOLKS_ALLOW_BASELINE;
+    try {
+      delete process.env.FOLKS_ALLOW_BASELINE;
+      expect(baselineCreationAllowed()).toBe(false);
+      process.env.FOLKS_ALLOW_BASELINE = "1";
+      expect(baselineCreationAllowed()).toBe(true);
+    } finally {
+      if (previous === undefined) delete process.env.FOLKS_ALLOW_BASELINE;
+      else process.env.FOLKS_ALLOW_BASELINE = previous;
+    }
   });
 });
 
