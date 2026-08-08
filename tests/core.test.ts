@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { FakeModelAdapter, defaultFakeOutput } from "@/src/adapters/model/fake";
 import { CloudModelAdapter } from "@/src/adapters/model/cloud";
+import { TechnicalFaultInjectionAdapter } from "@/src/adapters/model/technical-fault";
 import type { ModelAdapter } from "@/src/adapters/model/types";
 import {
   DEFAULT_MODEL_PARAMETERS,
@@ -12,6 +13,7 @@ import {
   residentForCycle,
 } from "@/src/core/constants";
 import { TurnEngine } from "@/src/core/engine";
+import { buildWorstCaseTurnInput } from "@/src/core/context";
 import { buildTurnInput } from "@/src/core/input";
 import { renderRepairPrompt, renderResidentPrompt } from "@/src/core/prompt";
 import { projectionMatchesHistory } from "@/src/core/replay";
@@ -22,6 +24,10 @@ import {
 import { createInitialState } from "@/src/core/state";
 import { validateModelTurnOutput } from "@/src/core/validation";
 import { SqliteExperimentStore } from "@/src/server/db/sqlite-store";
+import {
+  baselineCreationAllowed,
+  createAdapter,
+} from "@/src/server/runtime";
 
 function validOutput(overrides: Record<string, unknown> = {}) {
   return {
@@ -112,6 +118,29 @@ describe("FOLKS v0 domain boundaries", () => {
     expect(cycleFive.resident.privateNotes.every((note) => note.text.includes("Kai"))).toBe(
       true,
     );
+  });
+
+  it("builds worst-case context fields at their configured maximum lengths", () => {
+    const { store, experiment } = createMemoryExperiment("technical");
+    const input = buildWorstCaseTurnInput(
+      experiment,
+      store.getCurrentState(experiment.id),
+    );
+    expect(input.recentJournal).toHaveLength(4);
+    expect(
+      input.recentJournal.every(
+        (entry) =>
+          Array.from(entry.publicText).length === 500 &&
+          entry.questionForNext !== null &&
+          Array.from(entry.questionForNext).length === 160,
+      ),
+    ).toBe(true);
+    expect(input.resident.privateNotes).toHaveLength(7);
+    expect(
+      input.resident.privateNotes.every(
+        (note) => Array.from(note.text).length === 240,
+      ),
+    ).toBe(true);
   });
 
   it("builds the FOLKS view from a structurally public data shape", () => {
@@ -683,6 +712,172 @@ describe("cloud model boundary", () => {
       outputTokens: 17,
       finishReason: "stop",
     });
+  });
+
+  it("redacts a credential echoed by a provider error", async () => {
+    const { store, experiment } = createMemoryExperiment();
+    const built = buildTurnInput(
+      experiment,
+      store.getCurrentState(experiment.id),
+      1,
+    );
+    const credential = "secret-key-that-must-not-leak";
+    const adapter = new CloudModelAdapter({
+      endpoint: "https://provider.invalid/chat",
+      apiKey: credential,
+      modelIdentifier: "cloud-test",
+      fetchImpl: async () =>
+        new Response(
+          JSON.stringify({ error: { message: "provider saw " + credential } }),
+          { status: 401, statusText: "Unauthorized" },
+        ),
+    });
+    let errorMessage = "";
+    try {
+      await adapter.generateTurn(built.input);
+    } catch (error) {
+      errorMessage = error instanceof Error ? error.message : String(error);
+    }
+    expect(errorMessage).toContain("[REDACTED]");
+    expect(errorMessage).not.toContain(credential);
+  });
+
+  it("clears provider metadata before a subsequent request that fails", async () => {
+    const { store, experiment } = createMemoryExperiment();
+    const built = buildTurnInput(
+      experiment,
+      store.getCurrentState(experiment.id),
+      1,
+    );
+    let requestCount = 0;
+    const adapter = new CloudModelAdapter({
+      endpoint: "https://provider.invalid/chat",
+      apiKey: "metadata-test-key",
+      modelIdentifier: "cloud-test",
+      fetchImpl: async () => {
+        requestCount += 1;
+        if (requestCount === 1) {
+          return new Response(
+            JSON.stringify({
+              model: "cloud-test-returned",
+              usage: { prompt_tokens: 42, completion_tokens: 17 },
+              choices: [
+                {
+                  finish_reason: "stop",
+                  message: { content: JSON.stringify(validOutput()) },
+                },
+              ],
+            }),
+            { status: 200 },
+          );
+        }
+        return new Response(
+          JSON.stringify({ error: { message: "temporary failure" } }),
+          { status: 503, statusText: "Unavailable" },
+        );
+      },
+    });
+    await adapter.generateTurn(built.input);
+    expect(adapter.getLastResponseMetadata?.()).toEqual({
+      providerModel: "cloud-test-returned",
+      inputTokens: 42,
+      outputTokens: 17,
+      finishReason: "stop",
+    });
+    await expect(adapter.generateTurn(built.input)).rejects.toThrow(
+      "temporary failure",
+    );
+    expect(adapter.getLastResponseMetadata?.()).toBeNull();
+  });
+
+  it("records null metadata for an injected repair transport failure", async () => {
+    const cloud = new CloudModelAdapter({
+      endpoint: "https://provider.invalid/chat",
+      apiKey: "transport-test-key",
+      modelIdentifier: "cloud-test",
+      fetchImpl: async () =>
+        new Response(
+          JSON.stringify({
+            model: "cloud-test-returned",
+            usage: { prompt_tokens: 42, completion_tokens: 17 },
+            choices: [
+              {
+                finish_reason: "stop",
+                message: { content: JSON.stringify(validOutput()) },
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+    });
+    const adapter = new TechnicalFaultInjectionAdapter(cloud);
+    const { store, experiment } = createMemoryExperiment("technical", {
+      modelAdapter: adapter.name,
+      modelIdentifier: adapter.modelIdentifier,
+      promptVersion: adapter.promptVersion,
+      modelParameters: { ...adapter.modelParameters },
+    });
+    adapter.forceInvalidNextGeneration();
+    adapter.forceNextRepairTransportFailure();
+    const result = await new TurnEngine(store, adapter).runNextTurn(experiment.id);
+    expect(result.turn.status).toBe("FAILED");
+    const transportRun = store
+      .getTurn(result.turn.id)
+      ?.modelRuns.find((run) => run.kind === "transport");
+    expect(transportRun).toMatchObject({
+      inputTokens: null,
+      outputTokens: null,
+      finishReason: null,
+    });
+  });
+});
+
+describe("runtime shakeout safety", () => {
+  it("does not silently downgrade a requested cloud adapter without a credential", () => {
+    const previousAdapter = process.env.FOLKS_MODEL_ADAPTER;
+    const previousKey = process.env.OPENAI_API_KEY;
+    try {
+      process.env.FOLKS_MODEL_ADAPTER = "cloud";
+      delete process.env.OPENAI_API_KEY;
+      expect(() => createAdapter()).toThrow("requires OPENAI_API_KEY");
+    } finally {
+      if (previousAdapter === undefined) delete process.env.FOLKS_MODEL_ADAPTER;
+      else process.env.FOLKS_MODEL_ADAPTER = previousAdapter;
+      if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+      else process.env.OPENAI_API_KEY = previousKey;
+    }
+  });
+
+  it("requires an explicit model identifier for the cloud adapter", () => {
+    const previousAdapter = process.env.FOLKS_MODEL_ADAPTER;
+    const previousKey = process.env.OPENAI_API_KEY;
+    const previousModel = process.env.FOLKS_MODEL_ID;
+    try {
+      process.env.FOLKS_MODEL_ADAPTER = "cloud";
+      process.env.OPENAI_API_KEY = "local-test-key";
+      delete process.env.FOLKS_MODEL_ID;
+      expect(() => createAdapter()).toThrow("requires FOLKS_MODEL_ID");
+    } finally {
+      if (previousAdapter === undefined) delete process.env.FOLKS_MODEL_ADAPTER;
+      else process.env.FOLKS_MODEL_ADAPTER = previousAdapter;
+      if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+      else process.env.OPENAI_API_KEY = previousKey;
+      if (previousModel === undefined) delete process.env.FOLKS_MODEL_ID;
+      else process.env.FOLKS_MODEL_ID = previousModel;
+    }
+  });
+
+  it("keeps baseline creation disabled unless explicitly enabled", () => {
+    const previous = process.env.FOLKS_ALLOW_BASELINE;
+    try {
+      delete process.env.FOLKS_ALLOW_BASELINE;
+      expect(baselineCreationAllowed()).toBe(false);
+      process.env.FOLKS_ALLOW_BASELINE = "1";
+      expect(baselineCreationAllowed()).toBe(true);
+    } finally {
+      if (previous === undefined) delete process.env.FOLKS_ALLOW_BASELINE;
+      else process.env.FOLKS_ALLOW_BASELINE = previous;
+    }
   });
 });
 

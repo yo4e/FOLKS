@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { NewExperimentForm } from "./components/new-experiment-form";
-import { ensureDefaultExperiment, getRuntime } from "@/src/server/runtime";
+import {
+  baselineCreationAllowed,
+  ensureDefaultExperiment,
+  getRuntime,
+} from "@/src/server/runtime";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +33,11 @@ export default function HomePage() {
           <h2>実験を選ぶ</h2>
         </div>
         <NewExperimentForm
-          defaultKind={runtime.adapter.name === "fake" ? "technical" : "baseline"}
+          defaultKind={
+            baselineCreationAllowed() && runtime.adapter.name !== "fake"
+              ? "baseline"
+              : "technical"
+          }
         />
       </section>
       <div className="experiment-list">
