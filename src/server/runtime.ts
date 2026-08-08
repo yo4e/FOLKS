@@ -57,8 +57,11 @@ export function ensureDefaultExperiment(): string {
     return existing.id;
   }
   return runtime.store.createExperiment({
-    name: "FOLKS v0 baseline",
-    kind: "baseline",
+    name:
+      runtime.adapter.name === "fake"
+        ? "FOLKS technical shakeout"
+        : "FOLKS v0 baseline",
+    kind: runtime.adapter.name === "fake" ? "technical" : "baseline",
     modelAdapter: runtime.adapter.name,
     modelIdentifier: runtime.adapter.modelIdentifier,
     promptVersion: runtime.adapter.promptVersion || PROMPT_VERSION,

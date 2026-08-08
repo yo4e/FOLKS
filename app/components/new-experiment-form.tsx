@@ -3,9 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function NewExperimentForm() {
+export function NewExperimentForm({
+  defaultKind,
+}: {
+  defaultKind: "baseline" | "technical";
+}) {
   const router = useRouter();
-  const [kind, setKind] = useState<"baseline" | "technical">("baseline");
+  const [kind, setKind] = useState<"baseline" | "technical">(defaultKind);
   const [busy, setBusy] = useState(false);
 
   async function create() {
@@ -38,7 +42,9 @@ export function NewExperimentForm() {
             setKind(event.target.value as "baseline" | "technical")
           }
         >
-          <option value="baseline">baseline</option>
+          {defaultKind === "baseline" ? (
+            <option value="baseline">baseline</option>
+          ) : null}
           <option value="technical">technical shakeout</option>
         </select>
       </label>

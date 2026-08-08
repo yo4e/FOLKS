@@ -19,13 +19,13 @@ import type {
 
 const residentRefSchema = z
   .string()
-  .regex(/^resident:[a-z]$/, "residentRef must be a turn-local opaque ref");
+  .regex(/^resident:[a-z][a-z0-9]*$/, "residentRef must be a turn-local opaque ref");
 const objectRefSchema = z
   .string()
-  .regex(/^object:[a-z]$/, "objectRef must be a turn-local opaque ref");
+  .regex(/^object:[a-z][a-z0-9]*$/, "objectRef must be a turn-local opaque ref");
 const placeRefSchema = z
   .string()
-  .regex(/^place:[a-z]$/, "placeRef must be a turn-local opaque ref");
+  .regex(/^place:[a-z][a-z0-9]*$/, "placeRef must be a turn-local opaque ref");
 
 export const modelTurnOutputSchema = z
   .object({
@@ -103,23 +103,9 @@ function parseJsonCandidate(candidate: unknown): unknown {
     return candidate;
   }
   const trimmed = candidate.trim();
-  const fence = String.fromCharCode(96).repeat(3);
-  const withoutFence = trimmed
-    .replace(new RegExp("^" + fence + "(?:json)?\\s*", "i"), "")
-    .replace(new RegExp("\\s*" + fence + "$"), "")
-    .trim();
   try {
-    return JSON.parse(withoutFence);
+    return JSON.parse(trimmed);
   } catch {
-    const start = withoutFence.indexOf("{");
-    const end = withoutFence.lastIndexOf("}");
-    if (start >= 0 && end > start) {
-      try {
-        return JSON.parse(withoutFence.slice(start, end + 1));
-      } catch {
-        return candidate;
-      }
-    }
     return candidate;
   }
 }

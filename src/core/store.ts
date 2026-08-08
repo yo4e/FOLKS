@@ -421,7 +421,11 @@ export class InMemoryExperimentStore implements ExperimentStore {
       ) {
         return { owner: false, turn: existing };
       }
-      if (existing.status === "FAILED" && experiment.kind === "baseline") {
+      if (
+        existing.status === "FAILED" &&
+        experiment.kind === "baseline" &&
+        existing.failureKind !== "transport"
+      ) {
         return { owner: false, turn: existing };
       }
       const mutable = this.turns.get(existing.id);
@@ -588,7 +592,11 @@ export class InMemoryExperimentStore implements ExperimentStore {
     const nextExperiment = copy(experiment);
     nextExperiment.committedCycle = turn.cycle;
     nextExperiment.status =
-      turn.cycle === nextExperiment.totalCycles ? "completed" : "running";
+      turn.cycle === nextExperiment.totalCycles
+        ? "completed"
+        : experiment.status === "paused"
+          ? "paused"
+          : "running";
     nextExperiment.completedAt =
       nextExperiment.status === "completed" ? now : null;
 
@@ -636,11 +644,10 @@ export class InMemoryExperimentStore implements ExperimentStore {
     }
     const nextCycle = Math.min(experiment.committedCycle + 1, experiment.totalCycles);
     const recentEntry = state.journal[state.journal.length - 1];
-    const nextResident = residentForCycle(
+    const nextResident =
       experiment.committedCycle >= experiment.totalCycles
-        ? experiment.totalCycles + 1
-        : nextCycle,
-    );
+        ? null
+        : residentForCycle(nextCycle);
     return {
       experiment: {
         name: experiment.name,
@@ -653,7 +660,7 @@ export class InMemoryExperimentStore implements ExperimentStore {
         recentResidentName: recentEntry
           ? residentName(recentEntry.authorId)
           : null,
-        nextResidentName: residentName(nextResident),
+        nextResidentName: nextResident ? residentName(nextResident) : null,
       },
       world: {
         weather: weatherForCycle(nextCycle),
@@ -717,7 +724,7 @@ function redactSecrets(value: unknown): unknown {
   if (value && typeof value === "object") {
     const output: Record<string, unknown> = {};
     for (const [key, nested] of Object.entries(value)) {
-      if (/key|secret|token|authorization|password/i.test(key)) {
+      if (isSecretField(key)) {
         output[key] = "[redacted]";
       } else {
         output[key] = redactSecrets(nested);
@@ -726,4 +733,24 @@ function redactSecrets(value: unknown): unknown {
     return output;
   }
   return value;
+}
+
+const SECRET_FIELDS = new Set([
+  "apikey",
+  "apitoken",
+  "authorization",
+  "bearertoken",
+  "clientsecret",
+  "credential",
+  "credentials",
+  "idtoken",
+  "password",
+  "refreshtoken",
+  "secret",
+  "sessiontoken",
+  "token",
+]);
+
+function isSecretField(key: string): boolean {
+  return SECRET_FIELDS.has(key.replace(/[-_]/g, "").toLowerCase());
 }

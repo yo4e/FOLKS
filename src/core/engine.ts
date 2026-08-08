@@ -12,7 +12,7 @@ import type {
   ExperimentStore,
   AppendModelRunInput,
 } from "./store";
-import type { TurnRecord, ValidationIssue } from "./types";
+import type { Experiment, ModelRun, TurnRecord, ValidationIssue } from "./types";
 
 export type RunTurnResult = {
   owner: boolean;
@@ -53,7 +53,7 @@ function metadata(
   };
 }
 
-function latestPersistedResponse(turn: TurnRecord): unknown | undefined {
+function latestPersistedRun(turn: TurnRecord): ModelRun | undefined {
   const runs = [...turn.modelRuns]
     .reverse()
     .filter(
@@ -62,7 +62,56 @@ function latestPersistedResponse(turn: TurnRecord): unknown | undefined {
         run.rawOutput !== null &&
         run.rawOutput !== undefined,
     );
-  return runs[0]?.rawOutput;
+  return runs[0];
+}
+
+function latestPersistedResponse(turn: TurnRecord): unknown | undefined {
+  return latestPersistedRun(turn)?.rawOutput;
+}
+
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return "[" + value.map(canonicalJson).join(",") + "]";
+  }
+  if (value && typeof value === "object") {
+    return (
+      "{" +
+      Object.keys(value as Record<string, unknown>)
+        .sort()
+        .map((key) => JSON.stringify(key) + ":" + canonicalJson((value as Record<string, unknown>)[key]))
+        .join(",") +
+      "}"
+    );
+  }
+  return JSON.stringify(value) ?? String(value);
+}
+
+function assertAdapterCompatibility(
+  experiment: Experiment,
+  adapter: ModelAdapter,
+): void {
+  const mismatches: string[] = [];
+  if (experiment.modelAdapter !== adapter.name) {
+    mismatches.push("adapter");
+  }
+  if (experiment.modelIdentifier !== adapter.modelIdentifier) {
+    mismatches.push("modelIdentifier");
+  }
+  if (experiment.promptVersion !== adapter.promptVersion) {
+    mismatches.push("promptVersion");
+  }
+  if (
+    canonicalJson(experiment.modelParameters) !==
+    canonicalJson(adapter.modelParameters)
+  ) {
+    mismatches.push("modelParameters");
+  }
+  if (mismatches.length > 0) {
+    throw new Error(
+      "Frozen experiment execution config does not match the active model: " +
+        mismatches.join(", "),
+    );
+  }
 }
 
 export class TurnEngine {
@@ -72,6 +121,11 @@ export class TurnEngine {
   ) {}
 
   async runNextTurn(experimentId: string): Promise<RunTurnResult> {
+    const experiment = this.store.getExperiment(experimentId);
+    if (!experiment) {
+      throw new Error("Unknown experiment: " + experimentId);
+    }
+    assertAdapterCompatibility(experiment, this.adapter);
     const claim = this.store.claimNextTurn(experimentId);
     if (!claim.owner) {
       return {
@@ -89,6 +143,11 @@ export class TurnEngine {
     cycle: number,
     staleAfterMs: number,
   ): Promise<RunTurnResult> {
+    const experiment = this.store.getExperiment(experimentId);
+    if (!experiment) {
+      throw new Error("Unknown experiment: " + experimentId);
+    }
+    assertAdapterCompatibility(experiment, this.adapter);
     const claim = this.store.recoverStaleTurn(
       experimentId,
       cycle,
@@ -112,7 +171,13 @@ export class TurnEngine {
       if (
         !experiment ||
         experiment.committedCycle >= experiment.totalCycles ||
-        experiment.status === "paused"
+        (experiment.status === "paused" &&
+          !(
+            this.store.getTurnByCycle(
+              experimentId,
+              experiment.committedCycle + 1,
+            )?.failureKind === "transport"
+          ))
       ) {
         break;
       }
@@ -235,9 +300,15 @@ export class TurnEngine {
       claimedTurn.residentId,
     );
 
+    const priorRepairAttempts = claimedTurn.modelRuns.filter(
+      (run) => run.kind === "repair",
+    ).length;
     if (!validation.ok) {
       const errors = validationErrorStrings(validation.issues);
-      if (!this.adapter.repairTurn || MAX_OUTPUT_REPAIR_ATTEMPTS < 1) {
+      if (
+        !this.adapter.repairTurn ||
+        priorRepairAttempts >= MAX_OUTPUT_REPAIR_ATTEMPTS
+      ) {
         const failed = this.store.failTurn(
           claimedTurn.id,
           executionToken,

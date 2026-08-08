@@ -131,7 +131,13 @@ export function renderRepairPrompt(
     "直前の出力:",
     JSON.stringify(invalidOutput),
     "使用可能な参照:",
-    "resident refs: " + input.resident.ref + ", " + input.nextResident.ref,
+    "current resident ref (relationship target is illegal): " +
+      input.resident.ref,
+    "legal relationship target refs: " +
+      (input.resident.relationships.map((item) => item.residentRef).join(", ") ||
+        "なし"),
+    "next resident ref (use as a relationship target only if listed above): " +
+      input.nextResident.ref,
     "object refs: " + input.world.objects.map((object) => object.ref).join(", "),
     "place refs: " + input.world.places.map((place) => place.ref).join(", "),
   ].join("\n");

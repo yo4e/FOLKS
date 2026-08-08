@@ -40,6 +40,7 @@ export class CloudModelAdapter implements ModelAdapter {
   readonly name = "openai-compatible";
   readonly modelIdentifier: string;
   readonly promptVersion = PROMPT_VERSION;
+  readonly modelParameters: Readonly<Record<string, unknown>>;
   private readonly endpoint: string;
   private readonly apiKey: string;
   private readonly temperature: number;
@@ -55,6 +56,11 @@ export class CloudModelAdapter implements ModelAdapter {
       options.temperature ?? DEFAULT_MODEL_PARAMETERS.temperature;
     this.maxOutputTokens =
       options.maxOutputTokens ?? DEFAULT_MODEL_PARAMETERS.maxOutputTokens;
+    this.modelParameters = {
+      temperature: this.temperature,
+      maxOutputTokens: this.maxOutputTokens,
+      responseFormat: "json_object",
+    };
     this.fetchImpl = options.fetchImpl ?? fetch;
   }
 

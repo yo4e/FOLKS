@@ -19,25 +19,31 @@ import type {
   TurnRefMap,
 } from "./types";
 
-function refFor(prefix: string, index: number): string {
-  return prefix + ":" + String.fromCharCode("a".charCodeAt(0) + index);
+function refFor(prefix: string, index: number, turnNonce: string): string {
+  return (
+    prefix +
+    ":" +
+    String.fromCharCode("a".charCodeAt(0) + index) +
+    turnNonce
+  );
 }
 
-export function buildTurnRefMap(): TurnRefMap {
+export function buildTurnRefMap(turnNonce = "0"): TurnRefMap {
+  const safeNonce = String(turnNonce).replace(/[^a-z0-9]/gi, "") || "0";
   const residents = {} as TurnRefMap["residents"];
   RESIDENTS.forEach((resident, index) => {
-    residents[refFor("resident", index)] = resident.id;
+    residents[refFor("resident", index, safeNonce)] = resident.id;
   });
 
   const places = {} as TurnRefMap["places"];
   PLACES.forEach((place, index) => {
-    places[refFor("place", index)] = place.id;
+    places[refFor("place", index, safeNonce)] = place.id;
   });
 
   const objects = {} as TurnRefMap["objects"];
   (["object_01", "object_02", "object_03"] as ObjectId[]).forEach(
     (objectId, index) => {
-      objects[refFor("object", index)] = objectId;
+      objects[refFor("object", index, safeNonce)] = objectId;
     },
   );
 
@@ -59,7 +65,7 @@ export function buildTurnInput(
 
   const residentId = residentForCycle(cycle);
   const nextResidentId = nextResidentForCycle(cycle);
-  const refMap = buildTurnRefMap();
+  const refMap = buildTurnRefMap(cycle.toString(36));
   const residentRef = Object.entries(refMap.residents).find(
     ([, value]) => value === residentId,
   )?.[0] as ResidentRef;
@@ -86,17 +92,20 @@ export function buildTurnInput(
     };
   });
 
-  const places = PLACES.map((place, index) => ({
-    ref: refFor("place", index) as ResidentPlaceRef,
+  const places = PLACES.map((place) => ({
+    ref: (Object.entries(refMap.places).find(
+      ([, value]) => value === place.id,
+    )?.[0] ?? "") as ResidentPlaceRef,
     description: place.descriptionJa,
   }));
-  const objects = Object.values(state.objects).map((object, index) => ({
-    ref: refFor("object", index) as ResidentObjectRef,
+  const objects = Object.values(state.objects).map((object) => ({
+    ref: (Object.entries(refMap.objects).find(
+      ([, value]) => value === object.id,
+    )?.[0] ?? "") as ResidentObjectRef,
     description: object.descriptionJa,
-    locationRef: refFor(
-      "place",
-      PLACES.findIndex((place) => place.id === object.locationId),
-    ) as ResidentPlaceRef,
+    locationRef: (Object.entries(refMap.places).find(
+      ([, value]) => value === object.locationId,
+    )?.[0] ?? "") as ResidentPlaceRef,
   }));
 
   const recentJournal = state.journal

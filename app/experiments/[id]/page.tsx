@@ -44,7 +44,7 @@ export default async function FolksPage({
         <div className="arrow">→</div>
         <div>
           <span className="eyebrow">次の日直</span>
-          <strong>{view.duty.nextResidentName}</strong>
+          <strong>{view.duty.nextResidentName ?? "この実験の日直は終了しました"}</strong>
         </div>
       </section>
 

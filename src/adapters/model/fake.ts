@@ -1,4 +1,7 @@
-import { PROMPT_VERSION } from "@/src/core/constants";
+import {
+  DEFAULT_MODEL_PARAMETERS,
+  PROMPT_VERSION,
+} from "@/src/core/constants";
 import type { ModelAdapter } from "./types";
 import type { TurnInput } from "@/src/core/types";
 
@@ -18,6 +21,9 @@ export class FakeModelAdapter implements ModelAdapter {
   readonly name = "fake";
   readonly modelIdentifier = "folks-fake-v0";
   readonly promptVersion = PROMPT_VERSION;
+  readonly modelParameters: Readonly<Record<string, unknown>> = {
+    ...DEFAULT_MODEL_PARAMETERS,
+  };
   readonly generateCalls: TurnInput[] = [];
   readonly repairCalls: Array<{
     input: TurnInput;

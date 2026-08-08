@@ -6,7 +6,8 @@ export const dynamic = "force-dynamic";
 
 export default function HomePage() {
   ensureDefaultExperiment();
-  const experiments = getRuntime().store.listExperiments();
+  const runtime = getRuntime();
+  const experiments = runtime.store.listExperiments();
   return (
     <main className="shell narrow">
       <header className="site-header">
@@ -27,7 +28,9 @@ export default function HomePage() {
           <p className="eyebrow">EXPERIMENTS</p>
           <h2>実験を選ぶ</h2>
         </div>
-        <NewExperimentForm />
+        <NewExperimentForm
+          defaultKind={runtime.adapter.name === "fake" ? "technical" : "baseline"}
+        />
       </section>
       <div className="experiment-list">
         {experiments.map((experiment) => (

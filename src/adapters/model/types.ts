@@ -11,6 +11,7 @@ export type ModelAdapter = {
   readonly name: string;
   readonly modelIdentifier: string;
   readonly promptVersion: string;
+  readonly modelParameters: Readonly<Record<string, unknown>>;
   generateTurn(input: TurnInput): Promise<unknown>;
   repairTurn?(
     input: TurnInput,

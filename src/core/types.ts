@@ -265,7 +265,7 @@ export type FolksViewModel = {
   };
   duty: {
     recentResidentName: string | null;
-    nextResidentName: string;
+    nextResidentName: string | null;
   };
   world: {
     weather: string;

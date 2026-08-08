@@ -3,25 +3,21 @@ import { STALE_GENERATION_MS } from "@/src/core/constants";
 import { getRuntime } from "@/src/server/runtime";
 
 export async function POST(
-  request: Request,
+  _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await context.params;
-    const body = (await request.json().catch(() => ({}))) as {
-      cycle?: number;
-      staleAfterMs?: number;
-    };
     const runtime = getRuntime();
     const experiment = runtime.store.getExperiment(id);
     if (!experiment) {
       throw new Error("Experiment not found.");
     }
-    const cycle = body.cycle ?? experiment.committedCycle + 1;
+    const cycle = experiment.committedCycle + 1;
     const result = await runtime.engine.recoverStaleTurn(
       id,
       cycle,
-      body.staleAfterMs ?? STALE_GENERATION_MS,
+      STALE_GENERATION_MS,
     );
     return NextResponse.json({
       result: {

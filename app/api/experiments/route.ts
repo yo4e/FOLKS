@@ -16,7 +16,12 @@ export async function POST(request: Request) {
     const runtime = getRuntime();
     const experiment = runtime.store.createExperiment({
       name: body.name?.trim() || undefined,
-      kind: body.kind === "technical" ? "technical" : "baseline",
+      kind:
+        runtime.adapter.name === "fake"
+          ? "technical"
+          : body.kind === "technical"
+            ? "technical"
+            : "baseline",
       modelAdapter: runtime.adapter.name,
       modelIdentifier: runtime.adapter.modelIdentifier,
       promptVersion: runtime.adapter.promptVersion,

@@ -6,15 +6,19 @@ import { FakeModelAdapter, defaultFakeOutput } from "@/src/adapters/model/fake";
 import { CloudModelAdapter } from "@/src/adapters/model/cloud";
 import type { ModelAdapter } from "@/src/adapters/model/types";
 import {
+  DEFAULT_MODEL_PARAMETERS,
   RESIDENT_IDS,
   TOTAL_CYCLES,
   residentForCycle,
 } from "@/src/core/constants";
 import { TurnEngine } from "@/src/core/engine";
 import { buildTurnInput } from "@/src/core/input";
-import { renderResidentPrompt } from "@/src/core/prompt";
+import { renderRepairPrompt, renderResidentPrompt } from "@/src/core/prompt";
 import { projectionMatchesHistory } from "@/src/core/replay";
-import { InMemoryExperimentStore } from "@/src/core/store";
+import {
+  InMemoryExperimentStore,
+  type CreateExperimentInput,
+} from "@/src/core/store";
 import { createInitialState } from "@/src/core/state";
 import { validateModelTurnOutput } from "@/src/core/validation";
 import { SqliteExperimentStore } from "@/src/server/db/sqlite-store";
@@ -30,9 +34,12 @@ function validOutput(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function createMemoryExperiment(kind: "baseline" | "technical" = "baseline") {
+function createMemoryExperiment(
+  kind: "baseline" | "technical" = "baseline",
+  options: Omit<CreateExperimentInput, "kind"> = {},
+) {
   const store = new InMemoryExperimentStore();
-  const experiment = store.createExperiment({ kind });
+  const experiment = store.createExperiment({ ...options, kind });
   return { store, experiment };
 }
 
@@ -67,8 +74,8 @@ describe("FOLKS v0 domain boundaries", () => {
     expect(serialized).not.toContain("modelIdentifier");
     expect(built.input.resident.privateNotes).toEqual([]);
     expect(built.input.recentJournal).toEqual([]);
-    expect(built.input.world.objects[0].ref).toBe("object:a");
-    expect(built.refMap.objects["object:a"]).toBe("object_01");
+    expect(built.input.world.objects[0].ref).toBe("object:a1");
+    expect(built.refMap.objects[built.input.world.objects[0].ref]).toBe("object_01");
 
     const prompt = renderResidentPrompt(built.input);
     expect(prompt).toContain("日直番号: 1");
@@ -122,18 +129,19 @@ describe("FOLKS v0 validation", () => {
   it("accepts a structured output and resolves turn-local refs", () => {
     const { store, experiment } = createMemoryExperiment();
     const state = store.getCurrentState(experiment.id);
-    const { input, refMap } = buildTurnInput(experiment, state, 1);
+    const built = buildTurnInput(experiment, state, 1);
+    const { input, refMap } = built;
     const result = validateModelTurnOutput(
       validOutput({
         relationshipChange: {
-          residentRef: "resident:b",
+          residentRef: built.input.resident.relationships[0].residentRef,
           delta: 1,
           reason: "前の日誌の頼みを覚えていたから。",
         },
         worldAction: {
           type: "move_object",
-          objectRef: "object:a",
-          destinationPlaceRef: "place:c",
+          objectRef: built.input.world.objects[0].ref,
+          destinationPlaceRef: built.input.world.places[2].ref,
         },
       }),
       input,
@@ -152,19 +160,20 @@ describe("FOLKS v0 validation", () => {
   it("rejects stale refs, self relationships, and no-op movement", () => {
     const { store, experiment } = createMemoryExperiment();
     const state = store.getCurrentState(experiment.id);
-    const { input, refMap } = buildTurnInput(experiment, state, 1);
+    const firstTurn = buildTurnInput(experiment, state, 1);
+    const { input, refMap } = buildTurnInput(experiment, state, 2);
     const stale = validateModelTurnOutput(
       validOutput({
         worldAction: {
           type: "move_object",
-          objectRef: "object:z",
-          destinationPlaceRef: "place:c",
+          objectRef: firstTurn.input.world.objects[0].ref,
+          destinationPlaceRef: firstTurn.input.world.places[2].ref,
         },
       }),
       input,
       refMap,
       state,
-      "kai",
+      residentForCycle(2),
     );
     expect(stale.ok).toBe(false);
     if (!stale.ok) {
@@ -174,7 +183,7 @@ describe("FOLKS v0 validation", () => {
     const self = validateModelTurnOutput(
       validOutput({
         relationshipChange: {
-          residentRef: "resident:a",
+          residentRef: input.resident.ref,
           delta: 1,
           reason: "少しそう感じた。",
         },
@@ -182,7 +191,7 @@ describe("FOLKS v0 validation", () => {
       input,
       refMap,
       state,
-      "kai",
+      residentForCycle(2),
     );
     expect(self.ok).toBe(false);
     if (!self.ok) {
@@ -193,14 +202,14 @@ describe("FOLKS v0 validation", () => {
       validOutput({
         worldAction: {
           type: "move_object",
-          objectRef: "object:a",
-          destinationPlaceRef: "place:a",
+          objectRef: input.world.objects[0].ref,
+          destinationPlaceRef: input.world.objects[0].locationRef,
         },
       }),
       input,
       refMap,
       state,
-      "kai",
+      residentForCycle(2),
     );
     expect(noOp.ok).toBe(false);
     if (!noOp.ok) {
@@ -208,7 +217,7 @@ describe("FOLKS v0 validation", () => {
     }
   });
 
-  it("preserves a raw attempt while accepting a JSON object surrounded by prose", () => {
+  it("treats prose around JSON as a provider-format validation failure", () => {
     const { store, experiment } = createMemoryExperiment();
     const state = store.getCurrentState(experiment.id);
     const { input, refMap } = buildTurnInput(experiment, state, 1);
@@ -220,7 +229,33 @@ describe("FOLKS v0 validation", () => {
       state,
       "kai",
     );
-    expect(result.ok).toBe(true);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.issues.some((item) => item.code === "schema")).toBe(true);
+    }
+  });
+
+  it("describes legal relationship refs separately from the current resident ref", () => {
+    const { store, experiment } = createMemoryExperiment();
+    const built = buildTurnInput(
+      experiment,
+      store.getCurrentState(experiment.id),
+      1,
+    );
+    const prompt = renderRepairPrompt(built.input, { broken: true }, [
+      "journalText: length",
+    ]);
+    expect(prompt).toContain(
+      "current resident ref (relationship target is illegal): " +
+        built.input.resident.ref,
+    );
+    expect(prompt).toContain(
+      "legal relationship target refs: " +
+        built.input.resident.relationships.map((item) => item.residentRef).join(", "),
+    );
+    expect(prompt).not.toContain(
+      "resident refs: " + built.input.resident.ref + ", " + built.input.nextResident.ref,
+    );
   });
 });
 
@@ -239,6 +274,7 @@ describe("FOLKS v0 turn engine", () => {
     expect(store.getLabView(experiment.id).turns.every((turn) => turn.status === "COMMITTED")).toBe(
       true,
     );
+    expect(store.getFolksView(experiment.id).duty.nextResidentName).toBeNull();
     expect(projectionMatchesHistory(store.getCurrentState(experiment.id))).toBe(true);
   });
 
@@ -264,14 +300,14 @@ describe("FOLKS v0 turn engine", () => {
         validOutput({
           privateNote: "次の自分へ、石の位置を覚えておく。",
           relationshipChange: {
-            residentRef: "resident:b",
+            residentRef: "resident:b1",
             delta: 1,
             reason: "日誌の頼みを気に留めた。",
           },
           worldAction: {
             type: "move_object",
-            objectRef: "object:a",
-            destinationPlaceRef: "place:c",
+            objectRef: "object:a1",
+            destinationPlaceRef: "place:c1",
           },
           questionForNext: "石の位置を確認してください。",
         }),
@@ -306,7 +342,11 @@ describe("FOLKS v0 turn engine", () => {
   });
 
   it("prevents duplicate generation while a turn is claimed", async () => {
-    const { store, experiment } = createMemoryExperiment();
+    const { store, experiment } = createMemoryExperiment("technical", {
+      modelAdapter: "delayed-test",
+      modelIdentifier: "delayed-test",
+      promptVersion: "test",
+    });
     let release: (() => void) | undefined;
     const waiting = new Promise<void>((resolve) => {
       release = resolve;
@@ -316,6 +356,7 @@ describe("FOLKS v0 turn engine", () => {
       name: "delayed-test",
       modelIdentifier: "delayed-test",
       promptVersion: "test",
+      modelParameters: { ...DEFAULT_MODEL_PARAMETERS },
       async generateTurn(input) {
         calls += 1;
         await waiting;
@@ -335,6 +376,40 @@ describe("FOLKS v0 turn engine", () => {
     release?.();
     const firstResult = await first;
     expect(firstResult.committed).toBe(true);
+  });
+
+  it("preserves a pause requested while the current turn is generating", async () => {
+    const { store, experiment } = createMemoryExperiment("technical", {
+      modelAdapter: "delayed-test",
+      modelIdentifier: "delayed-test",
+      promptVersion: "test",
+    });
+    let release: (() => void) | undefined;
+    const waiting = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const adapter: ModelAdapter = {
+      name: "delayed-test",
+      modelIdentifier: "delayed-test",
+      promptVersion: "test",
+      modelParameters: { ...DEFAULT_MODEL_PARAMETERS },
+      async generateTurn(input) {
+        await waiting;
+        return defaultFakeOutput(input);
+      },
+      async repairTurn(input) {
+        return defaultFakeOutput(input);
+      },
+    };
+    const run = new TurnEngine(store, adapter).runUntilStopped(experiment.id);
+    await Promise.resolve();
+    expect(store.pauseExperiment(experiment.id).status).toBe("paused");
+    release?.();
+    const results = await run;
+    expect(results).toHaveLength(1);
+    expect(results[0].committed).toBe(true);
+    expect(store.getExperiment(experiment.id)?.status).toBe("paused");
+    expect(store.getExperiment(experiment.id)?.committedCycle).toBe(1);
   });
 
   it("recovers a stale generating turn from its persisted raw response", async () => {
@@ -400,6 +475,120 @@ describe("FOLKS v0 turn engine", () => {
     expect(store.getExperiment(experiment.id)?.committedCycle).toBe(0);
     const second = await engine.runNextTurn(experiment.id);
     expect(second.committed).toBe(true);
+    expect(store.getExperiment(experiment.id)?.committedCycle).toBe(1);
+  });
+
+  it("allows a paused baseline transport failure to resume without resampling", async () => {
+    const { store, experiment } = createMemoryExperiment();
+    const adapter = new FakeModelAdapter({
+      onGenerate: (_input, callNumber) => {
+        if (callNumber === 1) {
+          throw new Error("temporary transport failure");
+        }
+        return validOutput();
+      },
+    });
+    const engine = new TurnEngine(store, adapter);
+    const first = await engine.runNextTurn(experiment.id);
+    expect(first.turn.status).toBe("FAILED");
+    expect(first.turn.failureKind).toBe("transport");
+    expect(store.getExperiment(experiment.id)?.status).toBe("paused");
+    const second = await engine.runNextTurn(experiment.id);
+    expect(second.committed).toBe(true);
+    expect(store.getExperiment(experiment.id)?.committedCycle).toBe(1);
+    expect(adapter.generateCalls).toHaveLength(2);
+  });
+
+  it("does not perform a second repair after recovery finds a persisted repair", async () => {
+    const { store, experiment } = createMemoryExperiment();
+    const claim = store.claimNextTurn(experiment.id, "2020-01-01T00:00:00.000Z");
+    expect(claim.owner).toBe(true);
+    if (!claim.owner) return;
+    const built = buildTurnInput(
+      experiment,
+      store.getCurrentState(experiment.id),
+      1,
+    );
+    const token = claim.turn.executionToken as string;
+    store.saveTurnInput(
+      claim.turn.id,
+      token,
+      built.input,
+      built.refMap,
+      "2020-01-01T00:00:01.000Z",
+    );
+    store.appendModelRun(claim.turn.id, token, {
+      kind: "generation",
+      adapter: "fake",
+      modelIdentifier: "folks-fake-v0",
+      promptVersion: experiment.promptVersion,
+      rawInput: built.input,
+      rawOutput: { journalText: "生成失敗" },
+      validationErrors: [],
+      startedAt: "2020-01-01T00:00:01.000Z",
+      finishedAt: "2020-01-01T00:00:02.000Z",
+      latencyMs: 1000,
+      inputTokens: null,
+      outputTokens: null,
+      finishReason: null,
+    });
+    store.appendModelRun(claim.turn.id, token, {
+      kind: "repair",
+      adapter: "fake",
+      modelIdentifier: "folks-fake-v0",
+      promptVersion: experiment.promptVersion,
+      rawInput: built.input,
+      rawOutput: { journalText: "repair失敗" },
+      validationErrors: [],
+      startedAt: "2020-01-01T00:00:03.000Z",
+      finishedAt: "2020-01-01T00:00:04.000Z",
+      latencyMs: 1000,
+      inputTokens: null,
+      outputTokens: null,
+      finishReason: null,
+    });
+    const adapter = new FakeModelAdapter({
+      onRepair: () => {
+        throw new Error("repair #2 must not run");
+      },
+    });
+    const result = await new TurnEngine(store, adapter).recoverStaleTurn(
+      experiment.id,
+      1,
+      0,
+    );
+    expect(result.committed).toBe(false);
+    expect(result.turn.status).toBe("FAILED");
+    expect(result.turn.failureKind).toBe("validation");
+    expect(adapter.repairCalls).toHaveLength(0);
+    expect(store.getExperiment(experiment.id)?.status).toBe("failed");
+  });
+
+  it("refuses to resume an experiment with a changed frozen model config", async () => {
+    const modelParameters = { ...DEFAULT_MODEL_PARAMETERS };
+    const { store, experiment } = createMemoryExperiment("technical", {
+      modelAdapter: "config-test",
+      modelIdentifier: "model-v1",
+      promptVersion: "prompt-v1",
+      modelParameters,
+    });
+    const matching: ModelAdapter = {
+      name: "config-test",
+      modelIdentifier: "model-v1",
+      promptVersion: "prompt-v1",
+      modelParameters,
+      async generateTurn() {
+        return validOutput();
+      },
+    };
+    await new TurnEngine(store, matching).runNextTurn(experiment.id);
+    const changed: ModelAdapter = {
+      ...matching,
+      modelIdentifier: "model-v2",
+    };
+    await expect(
+      new TurnEngine(store, changed).runNextTurn(experiment.id),
+    ).rejects.toThrow("Frozen experiment execution config");
     expect(store.getExperiment(experiment.id)?.committedCycle).toBe(1);
   });
 
@@ -489,6 +678,89 @@ describe("SQLite persistence", () => {
       expect(duplicateClaim.turn.id).toBe(firstClaim.turn.id);
       firstStore.close();
       secondStore.close();
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("does not let a stale store pause away another store's active claim", () => {
+    const directory = mkdtempSync(join(tmpdir(), "folks-multi-store-"));
+    const path = join(directory, "folks.db");
+    try {
+      const firstStore = SqliteExperimentStore.fromPath(path);
+      const experiment = firstStore.createExperiment({ kind: "technical" });
+      const secondStore = SqliteExperimentStore.fromPath(path);
+      const claim = firstStore.claimNextTurn(
+        experiment.id,
+        "2020-01-01T00:00:00.000Z",
+      );
+      expect(claim.owner).toBe(true);
+      if (!claim.owner) return;
+      const token = claim.turn.executionToken as string;
+      const paused = secondStore.pauseExperiment(experiment.id);
+      expect(paused.status).toBe("paused");
+      expect(secondStore.getTurn(claim.turn.id)?.executionToken).toBe(token);
+      const built = buildTurnInput(
+        experiment,
+        firstStore.getCurrentState(experiment.id),
+        1,
+      );
+      firstStore.saveTurnInput(
+        claim.turn.id,
+        token,
+        built.input,
+        built.refMap,
+        "2020-01-01T00:00:01.000Z",
+      );
+      const thirdStore = SqliteExperimentStore.fromPath(path);
+      expect(thirdStore.getExperiment(experiment.id)?.status).toBe("paused");
+      expect(thirdStore.getTurn(claim.turn.id)?.executionToken).toBe(token);
+      firstStore.close();
+      secondStore.close();
+      thirdStore.close();
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps usage and token-budget metadata while redacting credential fields", () => {
+    const directory = mkdtempSync(join(tmpdir(), "folks-redaction-test-"));
+    const path = join(directory, "folks.db");
+    try {
+      const store = SqliteExperimentStore.fromPath(path);
+      const experiment = store.createExperiment({ kind: "technical" });
+      const claim = store.claimNextTurn(experiment.id);
+      expect(claim.owner).toBe(true);
+      if (!claim.owner) return;
+      store.appendModelRun(claim.turn.id, claim.turn.executionToken as string, {
+        kind: "generation",
+        adapter: "fake",
+        modelIdentifier: "folks-fake-v0",
+        promptVersion: experiment.promptVersion,
+        rawInput: {
+          apiKey: "secret-api-key",
+          inputTokens: 42,
+          maxOutputTokens: 1200,
+        },
+        rawOutput: {
+          authorization: "Bearer secret",
+          outputTokens: 17,
+        },
+        validationErrors: [],
+        startedAt: "2020-01-01T00:00:00.000Z",
+        finishedAt: "2020-01-01T00:00:01.000Z",
+        latencyMs: 1000,
+        inputTokens: 42,
+        outputTokens: 17,
+        finishReason: "stop",
+      });
+      const audit = JSON.stringify(store.getAuditExport(experiment.id));
+      expect(audit).not.toContain("secret-api-key");
+      expect(audit).not.toContain("Bearer secret");
+      expect(audit).toContain('"inputTokens":42');
+      expect(audit).toContain('"outputTokens":17');
+      expect(audit).toContain('"maxOutputTokens":1200');
+      store.close();
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }

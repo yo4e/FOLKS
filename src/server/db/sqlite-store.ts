@@ -512,8 +512,8 @@ export class SqliteExperimentStore implements ExperimentStore {
 
   private persistExperiment(experimentId: string): void {
     const snapshot = this.memory.exportExperimentSnapshot(experimentId);
-    this.db.transaction((tx) =>
-      this.writeSnapshot(tx, experimentId, snapshot),
+    this.runImmediate(() =>
+      this.writeSnapshot(this.db, experimentId, snapshot),
     );
   }
 
@@ -528,15 +528,22 @@ export class SqliteExperimentStore implements ExperimentStore {
   }
 
   private mutate<T>(experimentId: string, mutation: () => T): T {
-    const before = this.memory.exportExperimentSnapshot(experimentId);
-    try {
-      const result = mutation();
-      this.persistExperiment(experimentId);
-      return result;
-    } catch (error) {
-      this.memory.importExperimentSnapshot(before);
-      throw error;
-    }
+    return this.runImmediate(() => {
+      this.loadFromDatabase();
+      const before = this.memory.exportExperimentSnapshot(experimentId);
+      try {
+        const result = mutation();
+        this.writeSnapshot(
+          this.db,
+          experimentId,
+          this.memory.exportExperimentSnapshot(experimentId),
+        );
+        return result;
+      } catch (error) {
+        this.memory.importExperimentSnapshot(before);
+        throw error;
+      }
+    });
   }
 
   createExperiment(input: CreateExperimentInput = {}): Experiment {
@@ -555,13 +562,16 @@ export class SqliteExperimentStore implements ExperimentStore {
   }
 
   duplicateExperiment(experimentId: string, name?: string): Experiment {
-    const experiment = this.memory.duplicateExperiment(experimentId, name);
-    try {
-      this.persistExperiment(experiment.id);
-    } catch (error) {
-      throw error;
-    }
-    return experiment;
+    return this.runImmediate(() => {
+      this.loadFromDatabase();
+      const experiment = this.memory.duplicateExperiment(experimentId, name);
+      this.writeSnapshot(
+        this.db,
+        experiment.id,
+        this.memory.exportExperimentSnapshot(experiment.id),
+      );
+      return experiment;
+    });
   }
 
   pauseExperiment(experimentId: string): Experiment {
