@@ -55,11 +55,23 @@ private memory  = resident-specific continuity
 
 世界の物理や制度はコードで動かし、何を意味あるものとして読むかをモデルに任せます。
 
+## Model direction
+
+現在のv0は、まずcloud APIを使ってFOLKSの世界・日誌・交代制・監査機構そのものを検証します。ただし、これは最終的な研究対象ではなく**reference/control condition**として扱います。
+
+現行v0ではモデルの重みはcycle間で更新されません。したがって、履歴に応じた振る舞いの変化は社会状態・記憶の継承であって、住民モデル自体の学習や進化とは区別します。
+
+長期的には、FOLKSを**小さく、ローカルで動かせる、自作または意図的に能力を限定したLLM**へ接続し、住民どうしが残す痕跡や相互作用によって実際に学習・変化できる条件を別途設計します。
+
+強いpretrained modelは、学習していなくても「社会が発達したような振る舞い」をもっともらしく生成できるため、それだけを創発や進化の証拠とは扱いません。
+
+詳しくは [`docs/MODEL_DIRECTION.md`](./docs/MODEL_DIRECTION.md) に記録します。
+
 ## Current status
 
-**v0 vertical slice is merged on `main`.**
+**v0 vertical slice and the Issue #5 technical-shakeout tooling are merged on `main`.**
 
-PR #3 / Issue #2で、以下まで実装・レビュー済みです。
+PR #3 / PR #6までで、以下まで実装・レビュー済みです。
 
 - deterministic FakeModelによる30-cycle runner
 - resident-safe TurnInput / turn-local opaque refs
@@ -69,13 +81,15 @@ PR #3 / Issue #2で、以下まで実装・レビュー済みです。
 - SQLite + Drizzle persistence and audit history
 - FOLKS view / Lab view
 - OpenAI-compatible CloudModelAdapter
+- bounded real-provider technical shakeout runner
 - provider usage metadata / audit export
-- 27 regression and acceptance tests
+- baseline creation gate until technical review
+- 34 regression and acceptance tests
 - typecheck / lint / build / local HTTP smoke / context measurement
 
 最初のmeaningful baselineはまだ実行していません。次の段階は、**実providerを使ったtechnical shakeout**です。そこでstructured output、repair挙動、実token usage、model identifier、context余裕を確認し、条件を凍結してからfresh baseline experimentを作ります。
 
-FakeModelは技術検証用であり、meaningful baselineとして扱いません。
+FakeModelは技術検証用であり、meaningful baselineとして扱いません。cloud API baselineも、将来の小型・自作LLM条件に対するreference/controlとして位置づけます。
 
 ## Baseline safeguards
 
@@ -98,14 +112,15 @@ FakeModelは技術検証用であり、meaningful baselineとして扱いませ�
 
 1. [`docs/FINALIZATION_V0.md`](./docs/FINALIZATION_V0.md) — final v0 corrections / supersessions
 2. [`docs/DESIGN.md`](./docs/DESIGN.md) — 作品設計、情報境界、世界と観察者
-3. [`docs/SPEC_V0.md`](./docs/SPEC_V0.md) — 実装仕様、型、validation、transaction、テスト
-4. [`docs/EXPERIMENT_V0.md`](./docs/EXPERIMENT_V0.md) — 初期状態、weather、hypotheses、resonant comparison fixture
-5. [`docs/PROMPT_V0.md`](./docs/PROMPT_V0.md) — resident prompt / repair contract
-6. [`docs/UI_V0.md`](./docs/UI_V0.md) — FOLKS / Lab viewと操作意味
-7. [`docs/IMPLEMENTATION_GATES_V0.md`](./docs/IMPLEMENTATION_GATES_V0.md) — pre-baseline reliability / audit gates
-8. [`docs/IMPLEMENTATION.md`](./docs/IMPLEMENTATION.md) — 技術構成と実装方針
-9. [`CONTINUITY.md`](./CONTINUITY.md) — 現在地と次のhandoff
-10. [`docs/OPEN_QUESTIONS.md`](./docs/OPEN_QUESTIONS.md) — v0以後に残した問い
+3. [`docs/MODEL_DIRECTION.md`](./docs/MODEL_DIRECTION.md) — API reference conditionと将来のsmall/self-made LLM方向
+4. [`docs/SPEC_V0.md`](./docs/SPEC_V0.md) — 実装仕様、型、validation、transaction、テスト
+5. [`docs/EXPERIMENT_V0.md`](./docs/EXPERIMENT_V0.md) — 初期状態、weather、hypotheses、resonant comparison fixture
+6. [`docs/PROMPT_V0.md`](./docs/PROMPT_V0.md) — resident prompt / repair contract
+7. [`docs/UI_V0.md`](./docs/UI_V0.md) — FOLKS / Lab viewと操作意味
+8. [`docs/IMPLEMENTATION_GATES_V0.md`](./docs/IMPLEMENTATION_GATES_V0.md) — pre-baseline reliability / audit gates
+9. [`docs/IMPLEMENTATION.md`](./docs/IMPLEMENTATION.md) — 技術構成と実装方針
+10. [`CONTINUITY.md`](./CONTINUITY.md) — 現在地と次のhandoff
+11. [`docs/OPEN_QUESTIONS.md`](./docs/OPEN_QUESTIONS.md) — v0以後に残した問い
 
 ## Next milestone
 
